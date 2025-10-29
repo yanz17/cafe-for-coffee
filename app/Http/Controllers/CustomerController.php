@@ -15,17 +15,19 @@ class CustomerController extends Controller
     // 1. Tampilkan Daftar Menu
     public function index()
     {
-        // KOREKSI UTAMA: Menggunakan kolom 'is_tersedia'
-        $menus = Menu::where('is_tersedia', true)->orderBy('kategori')->get(); 
+        // Ambil semua menu yang tersedia dan urutkan berdasarkan kategori
+        $menus = \App\Models\Menu::where('is_tersedia', true)
+                                ->orderBy('kategori')
+                                ->orderBy('nama')
+                                ->get();
         
-        // Asumsi: Kita hanya butuh kategori unik dari menu yang tersedia
-        $categories = $menus->pluck('kategori')->unique(); 
-        
+        // KOREKSI UTAMA: Kelompokkan menu berdasarkan kategori
+        $groupedMenus = $menus->groupBy('kategori');
+
         $recommendations = $this->getPersonalRecommendations();
 
         return view('customer.menu.index', [
-            'menus' => $menus,
-            'categories' => $categories, // Meskipun tidak digunakan di view yang Anda berikan, ini dikirim
+            'groupedMenus' => $groupedMenus, // MENGGANTI $menus
             'recommendations' => $recommendations,
         ]);
     }
@@ -34,11 +36,12 @@ class CustomerController extends Controller
     {
         $userId = auth()->id();
         if (!$userId) {
-            return collect(); // Tidak ada rekomendasi jika tidak login
+            return collect(); 
         }
 
-        // A. Cari 5 item menu yang paling sering dibeli oleh pengguna ini
-        $userTopItems = OrderItem::select('menu_id', DB::raw('SUM(kuantitas) as total_bought'))
+        // A. Cari 5 item menu yang paling sering dibeli oleh pengguna ini (User Top Items)
+        //    Query ini tetap dibutuhkan untuk menentukan apa yang TIDAK perlu direkomendasikan.
+        $userTopItems = \App\Models\OrderItem::select('menu_id', DB::raw('SUM(kuantitas) as total_bought'))
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.user_id', $userId)
             ->where('orders.status_pembayaran', 'lunas')
@@ -48,30 +51,36 @@ class CustomerController extends Controller
             ->pluck('menu_id')
             ->toArray();
 
-        if (empty($userTopItems)) {
-            return collect(); // Tidak ada riwayat pembelian
-        }
-
-        // B. Cari item yang sering dibeli bersama item favorit pengguna
-        // Ini mencari item lain yang muncul di pesanan yang sama dengan item favorit pengguna
-        $coBoughtItems = OrderItem::select('t2.menu_id', DB::raw('COUNT(t2.menu_id) as co_occurrence_count'))
-            ->from('order_items as t1')
-            ->join('order_items as t2', function($join) {
-                // Join items yang ada di order yang sama tapi bukan item yang sama
-                $join->on('t1.order_id', '=', 't2.order_id')
-                    ->whereRaw('t1.menu_id != t2.menu_id');
-            })
-            ->whereIn('t1.menu_id', $userTopItems) // Fokus pada order yang mengandung item favorit pengguna
-            ->whereNotIn('t2.menu_id', $userTopItems) // Jangan rekomendasikan yang sudah jadi favorit
-            ->where('t2.menu_id', '!=', null) 
-            ->groupBy('t2.menu_id')
-            ->orderByDesc('co_occurrence_count')
+        // B. Query Baru: Cari item yang PALING SEDIKIT dibeli secara global (Underperforming Items)
+        $underperformingItems = \App\Models\OrderItem::select('order_items.menu_id', DB::raw('COUNT(order_items.menu_id) as global_count'))
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.status_pembayaran', 'lunas')
+            ->groupBy('order_items.menu_id')
+            
+            // KUNCI PERBAIKAN: Urutkan secara ASCENDING (paling sedikit dibeli)
+            ->orderBy('global_count', 'asc') 
+            
             ->limit(5)
-            ->pluck('t2.menu_id');
+            ->pluck('order_items.menu_id');
 
         // C. Ambil detail menu untuk rekomendasi
-        $recommendedMenus = Menu::whereIn('id', $coBoughtItems)->get();
+        $recommendedMenus = \App\Models\Menu::whereIn('id', $underperformingItems)
+                                        
+                                        // KOREKSI: JANGAN merekomendasikan item yang sudah menjadi favorit
+                                        // Kita filter di sini agar lebih fleksibel
+                                        ->whereNotIn('id', $userTopItems) 
+                                        
+                                        // Final check: Pastikan menu tersedia
+                                        ->where('is_tersedia', true)
+                                        ->get();
 
+        // Jika rekomendasi masih kosong, berikan menu paling sedikit dibeli (tanpa pengecualian favorit)
+        if ($recommendedMenus->isEmpty() && !empty($userTopItems)) {
+            $recommendedMenus = \App\Models\Menu::whereIn('id', $underperformingItems)
+                                                ->where('is_tersedia', true)
+                                                ->get();
+        }
+        
         return $recommendedMenus;
     }
 

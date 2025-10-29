@@ -28,6 +28,7 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
@@ -38,6 +39,13 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             <?php $__empty_1 = true; $__currentLoopData = $menus; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $menu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <?php if($menu->foto): ?>
+                                        <img src="<?php echo e(asset('storage/' . $menu->foto)); ?>" alt="<?php echo e($menu->nama); ?>" class="h-10 w-10 object-cover rounded-full">
+                                    <?php else: ?>
+                                        <span class="text-gray-400">N/A</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap"><?php echo e($menu->nama); ?></td>
                                 <td class="px-6 py-4 whitespace-nowrap"><?php echo e($menu->kategori); ?></td>
                                 <td class="px-6 py-4 whitespace-nowrap">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></td>
@@ -51,7 +59,14 @@
                                     <a href="<?php echo e(route('manager.menus.edit', $menu)); ?>" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                     <span class="text-gray-400">|</span> 
                                     <a href="<?php echo e(route('manager.menus.recipe.show', $menu)); ?>" class="text-blue-600 hover:text-blue-800 ml-1">Resep</a>
-                                    
+                                    <span class="text-gray-400">|</span> 
+                                    <form action="<?php echo e(route('manager.menus.destroy', $menu)); ?>" method="POST" class="inline" onsubmit="return confirm('APAKAH ANDA YAKIN INGIN MENGHAPUS MENU INI?');">
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('DELETE'); ?>
+                                        <button type="submit" class="text-red-600 hover:text-red-900 focus:outline-none bg-transparent border-none p-0">
+                                            Hapus
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>

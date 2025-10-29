@@ -9,6 +9,8 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BahanBakuController;
 use App\Http\Controllers\ReportController;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
 
 
 // Jika user BELUM login, arahkan ke halaman login
@@ -17,6 +19,18 @@ Route::middleware('guest')->group(function () {
         return redirect()->route('login');
     });
 });
+
+Route::get('serve-photo/{filename}', function ($filename) {
+    $filePath = 'menu_photos/' . $filename;
+    
+    if (Storage::disk('public')->exists($filePath)) {
+        
+        // KUNCI PERBAIKAN: Gunakan response()->file() yang lebih eksplisit
+        return response()->file(Storage::disk('public')->path($filePath));
+        
+    }
+    abort(404);
+})->where('filename', '.*')->name('serve.photo');
 
 // Jika user SUDAH login, gunakan redirect berbasis role dari Controller Login
 // Route root akan diarahkan ke route 'dashboard'

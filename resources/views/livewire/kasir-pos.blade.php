@@ -18,6 +18,10 @@
                         class="border p-3 rounded-lg cursor-pointer transition duration-150 
                                 @if ($menu->is_tersedia) hover:bg-indigo-50 @else bg-gray-100 opacity-60 cursor-not-allowed @endif"
                         @if (!$menu->is_tersedia) title="Menu tidak tersedia" @endif>
+                        @if ($menu->foto)
+                            <img src="{{ asset('storage/' . $menu->foto) }}" alt="{{ $menu->nama }}" 
+                                class="w-full h-24 object-cover rounded mb-2"> {{-- UKURAN BARU: h-24 --}}
+                        @endif
                         <p class="font-bold text-gray-800">{{ $menu->nama }}</p>
                         <p class="text-xs text-gray-500">{{ $menu->kategori }}</p>
                         <p class="text-md font-semibold text-indigo-600">Rp {{ number_format($menu->harga, 0, ',', '.') }}</p>

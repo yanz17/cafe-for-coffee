@@ -26,6 +26,7 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
@@ -36,6 +37,13 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             @forelse ($menus as $menu)
                             <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if ($menu->foto)
+                                        <img src="{{ asset('storage/' . $menu->foto) }}" alt="{{ $menu->nama }}" class="h-10 w-10 object-cover rounded-full">
+                                    @else
+                                        <span class="text-gray-400">N/A</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">{{ $menu->nama }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">{{ $menu->kategori }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">Rp {{ number_format($menu->harga, 0, ',', '.') }}</td>
@@ -48,7 +56,14 @@
                                     <a href="{{ route('manager.menus.edit', $menu) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                     <span class="text-gray-400">|</span> 
                                     <a href="{{ route('manager.menus.recipe.show', $menu) }}" class="text-blue-600 hover:text-blue-800 ml-1">Resep</a>
-                                    {{-- Tambahkan form delete di sini --}}
+                                    <span class="text-gray-400">|</span> 
+                                    <form action="{{ route('manager.menus.destroy', $menu) }}" method="POST" class="inline" onsubmit="return confirm('APAKAH ANDA YAKIN INGIN MENGHAPUS MENU INI?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-900 focus:outline-none bg-transparent border-none p-0">
+                                            Hapus
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             @empty

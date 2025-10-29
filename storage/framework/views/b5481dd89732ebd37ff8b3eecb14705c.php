@@ -18,6 +18,10 @@
                         class="border p-3 rounded-lg cursor-pointer transition duration-150 
                                 <?php if($menu->is_tersedia): ?> hover:bg-indigo-50 <?php else: ?> bg-gray-100 opacity-60 cursor-not-allowed <?php endif; ?>"
                         <?php if(!$menu->is_tersedia): ?> title="Menu tidak tersedia" <?php endif; ?>>
+                        <!--[if BLOCK]><![endif]--><?php if($menu->foto): ?>
+                            <img src="<?php echo e(asset('storage/' . $menu->foto)); ?>" alt="<?php echo e($menu->nama); ?>" 
+                                class="w-full h-24 object-cover rounded mb-2"> 
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                         <p class="font-bold text-gray-800"><?php echo e($menu->nama); ?></p>
                         <p class="text-xs text-gray-500"><?php echo e($menu->kategori); ?></p>
                         <p class="text-md font-semibold text-indigo-600">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>

@@ -30,17 +30,19 @@ class BahanBakuController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // 1. Validasi input
+        $validatedData = $request->validate([
             'nama' => 'required|string|max:255|unique:bahan_bakus,nama',
-            'unit' => 'required|string|max:50',
+            'unit' => 'required|string|max:50', // Contoh: gram, ml, pcs
             'stok_saat_ini' => 'required|integer|min:0',
             'stok_minimal' => 'required|integer|min:0',
         ]);
 
-        BahanBaku::create($request->all());
+        // 2. KOREKSI KRITIS: Gunakan data yang sudah divalidasi, bukan $request->all()
+        BahanBaku::create($validatedData); 
 
         return redirect()->route('manager.bahan_baku.index')
-                         ->with('success', 'Bahan baku ' . $request->nama . ' berhasil ditambahkan.');
+                        ->with('success', 'Bahan baku ' . $validatedData['nama'] . ' berhasil ditambahkan.');
     }
 
     /**

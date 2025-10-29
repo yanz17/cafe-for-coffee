@@ -8,8 +8,9 @@
 <?php $__env->stopSection(); ?>
 
 <?php $__env->startSection('content'); ?>
-    <div class="py-6" x-data="customerOrder()">
+    <div class="py-6" x-data="customerOrderData()" x-init="init()"> 
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            
             
             <?php if(session('success')): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -36,8 +37,13 @@
                             <?php $__currentLoopData = $recommendations; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $menu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition cursor-pointer" 
                                 @click="addItem(<?php echo e($menu->id); ?>, '<?php echo e($menu->nama); ?>', <?php echo e($menu->harga); ?>)">
+                                <?php if($menu->foto): ?>
+                                    <img src="<?php echo e(url('serve-photo/' . basename($menu->foto))); ?>" alt="<?php echo e($menu->nama); ?>" 
+                                         class="h-20 w-full object-cover rounded-md mb-1">
+                                <?php endif; ?>
                                 <p class="font-semibold text-sm"><?php echo e($menu->nama); ?></p>
-                                <p class="text-xs text-red-600">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>
+                                <p class="text-xs text-gray-500"><?php echo e($menu->kategori); ?></p>
+                                <p class="text-sm font-semibold text-red-600">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>
                             </div>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
@@ -49,21 +55,46 @@
             
 
             
-            <div class="bg-white shadow-xl sm:rounded-lg p-4 mb-8">
-                <h3 class="text-2xl font-bold mb-4">Pilih Menu Favoritmu</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <?php $__currentLoopData = $menus; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $menu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <div @click="addItem(<?php echo e($menu->id); ?>, '<?php echo e($menu->nama); ?>', <?php echo e($menu->harga); ?>)"
-                            class="border p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150 flex justify-between items-center">
-                            <div>
-                                <p class="font-bold text-lg text-gray-800"><?php echo e($menu->nama); ?></p>
-                                <p class="text-sm text-gray-500"><?php echo e($menu->kategori); ?></p>
-                            </div>
-                            <p class="text-xl font-semibold text-indigo-600">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>
+            <div class="mb-6 bg-white p-4 rounded-lg shadow-md">
+                <input type="text" x-model="searchTerm" placeholder="Cari nama menu..." 
+                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500">
+            </div>
+
+            
+            <div class="space-y-10">
+                <?php $__empty_1 = true; $__currentLoopData = $groupedMenus; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kategori => $menus): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                    <div class="bg-white shadow-xl sm:rounded-lg p-4">
+                        <h3 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700"><?php echo e($kategori); ?></h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <?php $__currentLoopData = $menus; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $menu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <?php
+                                    $safeMenuName = strtolower($menu->nama); 
+                                ?>
+
+                                
+                                <div x-show="isMenuVisible('<?php echo e($safeMenuName); ?>', searchTerm)" 
+                                     @click="addItem(<?php echo e($menu->id); ?>, '<?php echo e($menu->nama); ?>', <?php echo e($menu->harga); ?>)"
+                                     class="border p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150 flex justify-between items-center space-x-3">
+                                    
+                                    <div class="flex items-center space-x-3 flex-grow">
+                                        <?php if($menu->foto): ?>
+                                            <img src="<?php echo e(url('serve-photo/' . basename($menu->foto))); ?>" alt="<?php echo e($menu->nama); ?>" 
+                                                 class="h-20 w-20 object-cover rounded-md flex-shrink-0">
+                                        <?php endif; ?>
+                                        <div>
+                                            <p class="font-bold text-lg text-gray-800"><?php echo e($menu->nama); ?></p>
+                                            <p class="text-sm text-gray-500"><?php echo e($menu->kategori); ?></p>
+                                        </div>
+                                    </div>
+                                    <p class="text-xl font-semibold text-indigo-600 flex-shrink-0">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>
+                                </div>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                </div>
+                    </div>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                    <p class="text-center text-gray-500 pt-5">Saat ini tidak ada menu yang tersedia.</p>
+                <?php endif; ?>
             </div>
 
             
@@ -110,8 +141,29 @@
                     </div>
 
                     
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Tipe Pesanan</label>
+                        <select name="tipe_pemesanan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" x-model="orderType">
+                            <option value="take_away">Take Away</option>
+                            <option value="dine_in">Dine In</option>
+                        </select>
+                    </div>
                     
+                    <div class="mb-4" x-show="orderType === 'dine_in'">
+                        <label class="block text-sm font-medium text-gray-700">Nomor Meja</label>
+                        <input type="text" name="meja" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Metode Pembayaran (Bayar di Kasir)</label>
+                        <select name="payment_method" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="QRIS">QRIS</option>
+                            <option value="Transfer">Transfer Bank</option>
+                            <option value="Cash">Tunai (Bayar Saat Ambil)</option>
+                        </select>
+                    </div>
 
+                    
                     <input type="hidden" name="items" :value="JSON.stringify(cart.map(item => ({ 
                         menu_id: item.menu_id, 
                         kuantitas: item.kuantitas,
@@ -128,16 +180,20 @@
 
     
     <script>
-        function customerOrder() {
+        // Definisikan fungsi data utama secara global untuk x-data
+        window.customerOrderData = function() {
             return {
                 cart: [],
                 orderType: 'take_away',
-                
+                searchTerm: '', // State pencarian
+
                 init() {
+                    // Load cart dari localStorage
                     let savedCart = localStorage.getItem('cafe_for_coffee_cart');
                     if (savedCart) {
                         this.cart = JSON.parse(savedCart);
                     }
+                    // Watch for changes and save
                     this.$watch('cart', () => {
                         localStorage.setItem('cafe_for_coffee_cart', JSON.stringify(this.cart));
                     });
@@ -186,7 +242,16 @@
                         rupiah += separator + ribuan.join('.');
                     }
                     return 'Rp ' + rupiah;
-                }
+                },
+
+                // LOGIC PENCARIAN (untuk x-show)
+                isMenuVisible(menuName, term) {
+                    if (!term || term.trim() === '') {
+                        return true; 
+                    }
+                    // Menggunakan includes untuk pencarian non-case sensitive
+                    return menuName.includes(term.toLowerCase().trim());
+                },
             }
         }
     </script>

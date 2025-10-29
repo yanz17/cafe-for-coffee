@@ -7,9 +7,10 @@
 @endsection
 
 @section('content')
-    <div class="py-6" x-data="customerOrder()">
+    <div class="py-6" x-data="customerOrderData()" x-init="init()"> {{-- Ganti x-data call --}}
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             
+            {{-- NOTIFIKASI --}}
             @if (session('success'))
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
                     {{ session('success') }}
@@ -21,7 +22,7 @@
                 </div>
             @endif
 
-            {{-- --- BAGIAN REKOMENDASI PRODUK (BARU) --- --}}
+            {{-- --- BAGIAN REKOMENDASI PRODUK --- --}}
             @if (auth()->check())
                 <div class="mb-8 p-4 rounded-xl {{ $recommendations->isNotEmpty() ? 'bg-yellow-50 border-l-4 border-yellow-500 shadow-lg' : 'bg-gray-100 shadow-md' }}">
                     <h3 class="text-xl font-bold {{ $recommendations->isNotEmpty() ? 'text-yellow-800' : 'text-gray-700' }} mb-3">
@@ -33,8 +34,13 @@
                             @foreach ($recommendations as $menu)
                             <div class="bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition cursor-pointer" 
                                 @click="addItem({{ $menu->id }}, '{{ $menu->nama }}', {{ $menu->harga }})">
+                                @if ($menu->foto)
+                                    <img src="{{ url('serve-photo/' . basename($menu->foto)) }}" alt="{{ $menu->nama }}" 
+                                         class="h-20 w-full object-cover rounded-md mb-1">
+                                @endif
                                 <p class="font-semibold text-sm">{{ $menu->nama }}</p>
-                                <p class="text-xs text-red-600">Rp {{ number_format($menu->harga, 0, ',', '.') }}</p>
+                                <p class="text-xs text-gray-500">{{ $menu->kategori }}</p>
+                                <p class="text-sm font-semibold text-red-600">Rp {{ number_format($menu->harga, 0, ',', '.') }}</p>
                             </div>
                             @endforeach
                         </div>
@@ -45,25 +51,50 @@
             @endif
             {{-- --------------------------------------- --}}
 
-            {{-- Daftar Menu Utama --}}
-            <div class="bg-white shadow-xl sm:rounded-lg p-4 mb-8">
-                <h3 class="text-2xl font-bold mb-4">Pilih Menu Favoritmu</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach ($menus as $menu)
-                        <div @click="addItem({{ $menu->id }}, '{{ $menu->nama }}', {{ $menu->harga }})"
-                            class="border p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150 flex justify-between items-center">
-                            <div>
-                                <p class="font-bold text-lg text-gray-800">{{ $menu->nama }}</p>
-                                <p class="text-sm text-gray-500">{{ $menu->kategori }}</p>
-                            </div>
-                            <p class="text-xl font-semibold text-indigo-600">Rp {{ number_format($menu->harga, 0, ',', '.') }}</p>
-                        </div>
-                    @endforeach
-                </div>
+            {{-- KOLOM PENCARIAN --}}
+            <div class="mb-6 bg-white p-4 rounded-lg shadow-md">
+                <input type="text" x-model="searchTerm" placeholder="Cari nama menu..." 
+                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500">
             </div>
 
-            {{-- Floating Cart Summary --}}
+            {{-- DAFTAR MENU UTAMA (BERDASARKAN KATEGORI) --}}
+            <div class="space-y-10">
+                @forelse ($groupedMenus as $kategori => $menus)
+                    <div class="bg-white shadow-xl sm:rounded-lg p-4">
+                        <h3 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700">{{ $kategori }}</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @foreach ($menus as $menu)
+                                @php
+                                    $safeMenuName = strtolower($menu->nama); 
+                                @endphp
+
+                                {{-- PENGGUNAAN LOGIC PENCARIAN YANG AMAN --}}
+                                <div x-show="isMenuVisible('{{ $safeMenuName }}', searchTerm)" 
+                                     @click="addItem({{ $menu->id }}, '{{ $menu->nama }}', {{ $menu->harga }})"
+                                     class="border p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150 flex justify-between items-center space-x-3">
+                                    
+                                    <div class="flex items-center space-x-3 flex-grow">
+                                        @if ($menu->foto)
+                                            <img src="{{ url('serve-photo/' . basename($menu->foto)) }}" alt="{{ $menu->nama }}" 
+                                                 class="h-20 w-20 object-cover rounded-md flex-shrink-0">
+                                        @endif
+                                        <div>
+                                            <p class="font-bold text-lg text-gray-800">{{ $menu->nama }}</p>
+                                            <p class="text-sm text-gray-500">{{ $menu->kategori }}</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-xl font-semibold text-indigo-600 flex-shrink-0">Rp {{ number_format($menu->harga, 0, ',', '.') }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-center text-gray-500 pt-5">Saat ini tidak ada menu yang tersedia.</p>
+                @endforelse
+            </div>
+
+            {{-- FLOATING CART SUMMARY --}}
             <div x-show="cart.length > 0" x-transition:enter class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-2xl p-4 z-50">
                 <div class="max-w-4xl mx-auto flex justify-between items-center">
                     <div class="flex items-center space-x-4">
@@ -79,7 +110,7 @@
             </div>
         </div>
 
-        {{-- Modal Checkout --}}
+        {{-- MODAL CHECKOUT --}}
         <div x-data="{ open: false }" @open-checkout.window="open = true" x-show="open" 
              class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50">
             <div @click.away="open = false" class="relative top-20 mx-auto p-5 border w-full md:w-1/3 shadow-lg rounded-md bg-white">
@@ -88,7 +119,7 @@
                 <form action="{{ route('customer.order.store') }}" method="POST">
                     @csrf
                     
-                    {{-- Detail Keranjang di Modal (Dihapus duplikasi loop) --}}
+                    {{-- Detail Keranjang di Modal --}}
                     <div class="max-h-60 overflow-y-auto space-y-3 mb-4">
                         <template x-for="(item, index) in cart" :key="item.menu_id">
                             <div class="flex justify-between items-center border-b py-2">
@@ -106,9 +137,30 @@
                         <span x-text="formatRupiah(calculateTotal())"></span>
                     </div>
 
-                    {{-- Form Input Checkout (sisanya sama) --}}
-                    {{-- ... --}}
+                    {{-- Form Input Checkout --}}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Tipe Pesanan</label>
+                        <select name="tipe_pemesanan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" x-model="orderType">
+                            <option value="take_away">Take Away</option>
+                            <option value="dine_in">Dine In</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4" x-show="orderType === 'dine_in'">
+                        <label class="block text-sm font-medium text-gray-700">Nomor Meja</label>
+                        <input type="text" name="meja" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Metode Pembayaran (Bayar di Kasir)</label>
+                        <select name="payment_method" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="QRIS">QRIS</option>
+                            <option value="Transfer">Transfer Bank</option>
+                            <option value="Cash">Tunai (Bayar Saat Ambil)</option>
+                        </select>
+                    </div>
 
+                    {{-- Input Tersembunyi untuk Item Keranjang --}}
                     <input type="hidden" name="items" :value="JSON.stringify(cart.map(item => ({ 
                         menu_id: item.menu_id, 
                         kuantitas: item.kuantitas,
@@ -123,18 +175,22 @@
         </div>
     </div>
 
-    {{-- Script Alpine.js (Harus diluar Modal X-Data) --}}
+    {{-- KODE SCRIPT ALPINE FINAL --}}
     <script>
-        function customerOrder() {
+        // Definisikan fungsi data utama secara global untuk x-data
+        window.customerOrderData = function() {
             return {
                 cart: [],
                 orderType: 'take_away',
-                
+                searchTerm: '', // State pencarian
+
                 init() {
+                    // Load cart dari localStorage
                     let savedCart = localStorage.getItem('cafe_for_coffee_cart');
                     if (savedCart) {
                         this.cart = JSON.parse(savedCart);
                     }
+                    // Watch for changes and save
                     this.$watch('cart', () => {
                         localStorage.setItem('cafe_for_coffee_cart', JSON.stringify(this.cart));
                     });
@@ -183,7 +239,16 @@
                         rupiah += separator + ribuan.join('.');
                     }
                     return 'Rp ' + rupiah;
-                }
+                },
+
+                // LOGIC PENCARIAN (untuk x-show)
+                isMenuVisible(menuName, term) {
+                    if (!term || term.trim() === '') {
+                        return true; 
+                    }
+                    // Menggunakan includes untuk pencarian non-case sensitive
+                    return menuName.includes(term.toLowerCase().trim());
+                },
             }
         }
     </script>
