@@ -82,32 +82,40 @@
 
     {{-- Load feedback yang sudah ada --}}
     @php
-        //$feedback = $order->feedback; // Anda perlu menambahkan relasi feedback ke model Order
+        $feedback = \App\Models\Feedback::where('order_id', $order->id)->first(); // Anda perlu menambahkan relasi feedback ke model Order
     @endphp
 
     {{-- Bagian Umpan Balik --}}
-    <div class="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner">
-        <h3 class="text-xl font-bold mb-4">Berikan Umpan Balik</h3>
+    <div class="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner border-t">
+        <h3 class="text-2xl font-bold mb-4">Umpan Balik Pelayanan</h3>
 
         @if ($order->status_pesanan !== 'selesai')
-            <p class="text-gray-500">Umpan balik dapat diberikan setelah pesanan berstatus Selesai.</p>
+            <p class="text-gray-500">Anda dapat memberikan umpan balik setelah pesanan berstatus **Selesai**.</p>
         @elseif ($feedback)
-            <p class="text-green-600 font-semibold">Anda sudah memberikan rating {{ $feedback->rating }} bintang. Terima kasih!</p>
-            <p class="text-gray-700 mt-2">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
+            {{-- Tampilan Feedback yang Sudah Ada --}}
+            <div class="border-l-4 border-green-500 pl-4">
+                <p class="text-green-600 font-bold mb-2">Terima kasih! Umpan balik sudah terkirim.</p>
+                <p class="font-semibold">Rating Anda: {{ $feedback->rating }} Bintang</p>
+                <p class="text-gray-700 mt-1">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
+            </div>
         @else
-            {{-- Form Umpan Balik --}}
+            {{-- Form Umpan Balik (Hanya tampil jika Selesai dan Belum Ada Feedback) --}}
             <form action="{{ route('customer.order.feedback.store', $order) }}" method="POST">
                 @csrf
+                
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Rating (1-5)</label>
-                    <input type="number" name="rating" min="1" max="5" required class="mt-1 block w-20 rounded-md border-gray-300 shadow-sm" value="{{ old('rating') }}">
+                    <input type="number" name="rating" min="1" max="5" required 
+                        class="mt-1 block w-20 rounded-md border-gray-300 shadow-sm" value="5">
                     @error('rating') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
+                
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Komentar (Opsional)</label>
-                    <textarea name="komentar" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">{{ old('komentar') }}</textarea>
+                    <textarea name="komentar" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
                     @error('komentar') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
+                
                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
                     Kirim Umpan Balik
                 </button>

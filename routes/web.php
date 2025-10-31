@@ -52,38 +52,46 @@ Route::middleware('auth')->group(function () {
 });
 
 // Route untuk Manajer
-Route::middleware(['auth', 'role:'. User::ROLE_MANAGER])->group(function () {
+Route::prefix('manager')->middleware(['auth', 'role:'. User::ROLE_MANAGER])->group(function () {
     
     // 1. DASHBOARD MANAJER
-    Route::get('/manager/dashboard', [ReportController::class, 'dashboardSummary'])
+    // URL: /manager/dashboard
+    Route::get('/dashboard', [ReportController::class, 'dashboardSummary'])
         ->name('manager.dashboard');
 
-    // 2. KELOLA USER (CRUD Kasir dan Manajer Lain)
-    // Asumsi Anda menggunakan UserController untuk mengelola user di luar registrasi Breeze
-    Route::resource('manager/users', UserController::class)->names('manager.users');
+    // 2. KELOLA USER
+    // URL: /manager/users
+    Route::resource('users', UserController::class)->names('manager.users');
     
     // 3. KELOLA MENU & RESEP
-    Route::resource('manager/menus', MenuController::class)->names('manager.menus');
-    // Route untuk menampilkan dan menyimpan resep menu tertentu
-    Route::get('manager/menus/{menu}/resep', [MenuController::class, 'showRecipeForm'])->name('manager.menus.recipe.show');
-    Route::post('manager/menus/{menu}/resep', [MenuController::class, 'storeRecipe'])->name('manager.menus.recipe.store');
+    // URL: /manager/menus
+    Route::resource('menus', MenuController::class)->names('manager.menus');
+    Route::get('menus/{menu}/resep', [MenuController::class, 'showRecipeForm'])->name('manager.menus.recipe.show');
+    Route::post('menus/{menu}/resep', [MenuController::class, 'storeRecipe'])->name('manager.menus.recipe.store');
     
-    // 4. KELOLA BAHAN BAKU (Inventaris)
-    Route::resource('manager/bahan_baku', BahanBakuController::class)->names('manager.bahan_baku');
+    // 4. KELOLA BAHAN BAKU
+    // URL: /manager/bahan_baku
+    Route::resource('bahan_baku', BahanBakuController::class)->names('manager.bahan_baku');
     
-    // 5. LAPORAN
-    Route::get('manager/reports/sales', [ReportController::class, 'salesReport'])->name('manager.reports.sales');
-    Route::get('manager/reports/inventory-status', [ReportController::class, 'inventoryStatus'])->name('manager.reports.inventory_status');
-    // ... Tambahkan route laporan lain (misalnya laporan HPP)
+    // 5. KELOLA KATEGORI (FIX 404)
+    // URL: /manager/categories
+    Route::prefix('categories')->name('manager.categories.')->group(function () {
+        Route::get('/', [MenuController::class, 'categoriesIndex'])->name('index');
+        Route::post('/', [MenuController::class, 'categoryStore'])->name('store');
+        Route::put('/', [MenuController::class, 'categoryUpdate'])->name('update');
+        Route::delete('/', [MenuController::class, 'categoryDestroy'])->name('destroy');
+    });
 
-    // BARU: Laporan Popularitas Produk
-    Route::get('manager/reports/popularity', [ReportController::class, 'productPopularity'])->name('manager.reports.popularity');
-    // BARU: Halaman Chart Visualisasi
-    Route::get('manager/reports/charts', [ReportController::class, 'salesChartData'])->name('manager.reports.charts');
-    // BARU: Laporan Segmentasi Pelanggan
-    Route::get('manager/reports/customers', [ReportController::class, 'customerSegmentation'])->name('manager.reports.customers');
-    // BARU: Rekomendasi Produk
-    Route::get('manager/reports/recommendations', [ReportController::class, 'productRecommendations'])->name('manager.reports.recommendations');
+    // 6. LAPORAN
+    // URL: /manager/reports/...
+    Route::prefix('reports')->name('manager.reports.')->group(function () {
+        Route::get('sales', [ReportController::class, 'salesReport'])->name('sales');
+        Route::get('inventory-status', [ReportController::class, 'inventoryStatus'])->name('inventory_status');
+        Route::get('popularity', [ReportController::class, 'productPopularity'])->name('popularity');
+        Route::get('charts', [ReportController::class, 'salesChartData'])->name('charts');
+        Route::get('customers', [ReportController::class, 'customerSegmentation'])->name('customers');
+        Route::get('recommendations', [ReportController::class, 'productRecommendations'])->name('recommendations');
+    });
 });
 
 // Route untuk Kasir
@@ -116,5 +124,7 @@ Route::middleware(['auth', 'role:'. User::ROLE_PELANGGAN])->group(function () {
     Route::get('/my-orders/{order}', [CustomerController::class, 'showOrder'])->name('customer.orders.show');
     Route::post('/order/{order}/feedback', [CustomerController::class, 'storeFeedback'])->name('customer.order.feedback.store');
 });
+
+
 
 require __DIR__.'/auth.php';

@@ -171,6 +171,7 @@ class CustomerController extends Controller
     {
         $orders = Order::where('user_id', auth()->id())
                        ->orderBy('created_at', 'desc')
+                       ->with('feedback')
                        ->get();
         return view('customer.orders.index', compact('orders'));
     }

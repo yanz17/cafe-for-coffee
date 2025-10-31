@@ -33,9 +33,27 @@
                         </span>
                     </div>
                     
-                    <div class="mt-4 text-right">
+                    {{-- KOREKSI UTAMA: BLOK TOMBOL FEEDBACK --}}
+                    <div class="mt-4 text-right flex justify-end items-center space-x-3">
+                        
+                        @if ($order->status_pesanan === 'selesai')
+                            @if ($order->feedback)
+                                {{-- Sudah memberikan feedback --}}
+                                <span class="text-green-600 font-semibold text-sm">Feedback Terkirim (Rating: {{ $order->feedback->rating }})</span>
+                            @else
+                                {{-- Tombol untuk menampilkan Modal --}}
+                                <button 
+                                    @click="$dispatch('open-feedback-modal', { orderId: {{ $order->id }}, orderNum: '{{ $order->nomor_pesanan }}' })"
+                                    class="text-red-600 hover:text-red-800 font-medium bg-red-100 py-1 px-3 rounded text-sm">
+                                    Beri Feedback &rarr;
+                                </button>
+                            @endif
+                        @endif
+
                         <a href="{{ route('customer.orders.show', $order) }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Lihat Detail & Instruksi &rarr;</a>
                     </div>
+                    {{-- AKHIR BLOK TOMBOL FEEDBACK --}}
+
                 </div>
                 @empty
                 <div class="bg-white shadow-sm sm:rounded-lg p-6 text-center text-gray-500">
@@ -45,4 +63,8 @@
             </div>
         </div>
     </div>
+
+    {{-- WAJIB: SERTAKAN MODAL FEEDBACK DI SINI --}}
+    @include('customer.orders.feedback_modal')
+
 @endsection

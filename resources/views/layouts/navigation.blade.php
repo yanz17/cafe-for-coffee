@@ -39,6 +39,9 @@
                                             <x-nav-link :href="route('manager.users.index')" :active="request()->routeIs('manager.users.*')">
                                                 {{ __('Kelola Staff') }}
                                             </x-nav-link>
+                                            <x-nav-link :href="route('manager.categories.index')" :active="request()->routeIs('manager.categories.*')">
+                                                {{ __('Kelola Kategori') }}
+                                            </x-nav-link>
                                         @endif
 
                                         {{-- 2. Tautan untuk ROLE KASIR --}}

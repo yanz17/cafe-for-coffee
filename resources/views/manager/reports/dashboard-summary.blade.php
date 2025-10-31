@@ -57,6 +57,19 @@
                             <li><a href="{{ route('manager.reports.charts') }}" class="text-sm text-indigo-600 hover:text-indigo-800">Visualisasi & Tren Penjualan</a></li>
                             <li><a href="{{ route('manager.reports.popularity') }}" class="text-sm text-indigo-600 hover:text-indigo-800">Popularitas Produk</a></li>
                             
+                            <li class="font-semibold text-gray-800 pt-2">Manajemen Menu:</li>
+                            <li>
+                                <a href="{{ route('manager.menus.index') }}" class="text-sm text-yellow-600 hover:text-yellow-800">
+                                    Kelola Daftar Menu
+                                </a>
+                            </li>
+                            {{-- BARU: Link Kelola Kategori --}}
+                            <li>
+                                <a href="{{ route('manager.categories.index') }}" class="text-sm text-yellow-600 hover:text-yellow-800 font-bold">
+                                    Kelola Kategori Menu &rarr;
+                                </a>
+                            </li>
+
                             <li class="font-semibold text-gray-800 pt-2">Business Insight:</li>
                             <li><a href="{{ route('manager.reports.customers') }}" class="text-sm text-green-600 hover:text-green-800">Segmentasi Pelanggan (Top Buyers)</a></li>
                             <li><a href="{{ route('manager.reports.recommendations') }}" class="text-sm text-green-600 hover:text-green-800">Rekomendasi Produk</a></li>

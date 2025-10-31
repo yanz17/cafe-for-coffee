@@ -31,8 +31,10 @@
                             <label for="kategori" class="block text-sm font-medium text-gray-700">Kategori</label>
                             <select name="kategori" id="kategori" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                                 {{-- Gunakan data dari database untuk opsi yang terpilih --}}
-                                @foreach (['Coffee', 'Non-Coffee', 'Snack'] as $category)
-                                    <option value="{{ $category }}" {{ old('kategori', $menu->kategori) == $category ? 'selected' : '' }}>{{ $category }}</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category }}" >
+                                        {{ $category }}
+                                    </option>
                                 @endforeach
                             </select>
                             @error('kategori') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror

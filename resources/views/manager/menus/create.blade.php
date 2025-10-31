@@ -29,9 +29,11 @@
                         <div class="mb-4">
                             <label for="kategori" class="block text-sm font-medium text-gray-700">Kategori</label>
                             <select name="kategori" id="kategori" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                                <option value="Coffee" {{ old('kategori') == 'Coffee' ? 'selected' : '' }}>Coffee</option>
-                                <option value="Non-Coffee" {{ old('kategori') == 'Non-Coffee' ? 'selected' : '' }}>Non-Coffee</option>
-                                <option value="Snack" {{ old('kategori') == 'Snack' ? 'selected' : '' }}>Snack</option>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category }}" >
+                                        {{ $category }}
+                                    </option>
+                                @endforeach
                             </select>
                             @error('kategori') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                         </div>

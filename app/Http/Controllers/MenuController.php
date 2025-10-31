@@ -24,7 +24,14 @@ class MenuController extends Controller
      */
     public function create()
     {
-        return view('manager.menus.create');
+        $categories = \App\Models\Menu::select('kategori')
+                      ->whereNotNull('kategori') // Hapus kategori NULL
+                      ->where('kategori', '!=', 'DUMMY_KATEGORI_BARU') // Hapus kategori dummy
+                      ->distinct()
+                      ->pluck('kategori')
+                      ->sort();
+
+        return view('manager.menus.create', compact('categories'));
     }
 
     /**
@@ -33,7 +40,7 @@ class MenuController extends Controller
     public function store(Request $request)
     {
         // Lakukan validasi terlebih dahulu (tetap wajib!)
-        $request->validate([
+        $validatedData = $request->validate([
             'nama' => 'required|string|max:255|unique:menus,nama',
             'deskripsi' => 'nullable|string',
             'harga' => 'required|integer|min:0',
@@ -61,7 +68,11 @@ class MenuController extends Controller
         }
 
         // KOREKSI: Gunakan array yang sudah diolah ($dataToStore)
-        \App\Models\Menu::create($dataToStore); 
+        $dataToStore = $request->except(['_token']);
+
+        $safeData = array_merge($request->validated(), ['foto' => $dataToStore['foto']]);
+
+        \App\Models\Menu::create($safeData);
 
         return redirect()->route('manager.menus.index')
                         ->with('success', 'Menu berhasil ditambahkan.');
@@ -72,7 +83,14 @@ class MenuController extends Controller
      */
     public function edit(Menu $menu) // Menggunakan Route Model Binding
     {
-        return view('manager.menus.edit', compact('menu'));
+        $categories = \App\Models\Menu::select('kategori')
+                      ->whereNotNull('kategori')
+                      ->where('kategori', '!=', 'DUMMY_KATEGORI_BARU')
+                      ->distinct()
+                      ->pluck('kategori')
+                      ->sort();
+
+        return view('manager.menus.edit', compact('menu', 'categories'));
     }
 
     /**
@@ -179,5 +197,85 @@ class MenuController extends Controller
 
         return redirect()->route('manager.menus.index')
                         ->with('success', 'Menu ' . $menu->nama . ' berhasil dihapus.');
+    }
+
+    /**
+     * Menampilkan dan mengelola daftar kategori menu yang unik (READ).
+     */
+    public function categoriesIndex()
+    {
+        // Mengambil semua kategori unik yang saat ini ada di database
+        $categories = Menu::select('kategori')
+            ->distinct()
+            ->pluck('kategori'); // Mengambil nama kategori sebagai array
+            
+        return view('manager.menus.categories.index', compact('categories'));
+    }
+
+    /**
+     * Menambahkan kategori baru (CREATE).
+     */
+    public function categoryStore(Request $request)
+    {
+        $request->validate([
+            // Validasi masih menggunakan tabel menus
+            'new_category_name' => 'required|string|max:50|unique:menus,kategori',
+        ], [
+            'new_category_name.unique' => 'Kategori ini sudah ada.',
+            'new_category_name.required' => 'Nama kategori wajib diisi.',
+        ]);
+
+        // KUNCI PERBAIKAN: Membuat entri Menu dummy untuk menyimpan nama kategori.
+        // Menu ini akan disetel menjadi is_hidden = true (jika kolom ada) atau
+        // diberi nama yang jelas-jelas tidak valid/dummy.
+        
+        Menu::create([
+            'nama' => 'DUMMY_KATEGORI_BARU', // Nama dummy
+            'kategori' => $request->new_category_name, // Nama kategori yang ingin disimpan
+            'harga' => 0, // Harga 0
+            'stok' => 0,  // Stok 0
+            // Tambahkan kolom lain yang required di tabel menus Anda jika ada
+        ]);
+
+        return redirect()->route('manager.categories.index')
+            ->with('success', "Kategori '{$request->new_category_name}' berhasil ditambahkan dan siap digunakan.");
+    }
+
+    /**
+     * Mengganti nama kategori yang sudah ada (UPDATE).
+     */
+    public function categoryUpdate(Request $request)
+    {
+        $request->validate([
+            'old_category_name' => 'required|string|exists:menus,kategori',
+            'new_category_name' => 'required|string|max:50|unique:menus,kategori',
+        ]);
+        
+        // KUNCI: Mengganti nama kategori di SEMUA menu yang terkait
+        Menu::where('kategori', $request->old_category_name)->update([
+            'kategori' => $request->new_category_name
+        ]);
+
+        return redirect()->route('manager.menus.categories.index')
+            ->with('success', "Kategori '{$request->old_category_name}' berhasil diubah menjadi '{$request->new_category_name}'.");
+    }
+
+    /**
+     * Menghapus kategori (DELETE).
+     */
+    public function categoryDestroy(Request $request)
+    {
+        $request->validate([
+            'category_name' => 'required|string|exists:menus,kategori',
+        ]);
+
+        // KUNCI: Menghapus kategori berarti men-set field 'kategori' di menu menjadi NULL (atau default)
+        // Pilihan Aman: Set kategori menjadi NULL atau 'Uncategorized'
+        Menu::where('kategori', $request->category_name)->update([
+            'kategori' => 'Uncategorized' 
+        ]);
+
+        return redirect()->route('manager.menus.categories.index')
+            ->with('success', "Kategori '{$request->category_name}' berhasil dihapus. Menu yang terkait disetel ke 'Uncategorized'.");
     }
 }
