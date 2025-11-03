@@ -76,6 +76,20 @@
                             <li><a href="<?php echo e(route('manager.reports.customers')); ?>" class="text-sm text-green-600 hover:text-green-800">Segmentasi Pelanggan (Top Buyers)</a></li>
                             <li><a href="<?php echo e(route('manager.reports.recommendations')); ?>" class="text-sm text-green-600 hover:text-green-800">Rekomendasi Produk</a></li>
                             <li><a href="<?php echo e(route('manager.reports.inventory_status')); ?>" class="text-sm text-red-600 hover:text-red-800">Status Stok Kritis</a></li>
+
+                            <li>
+                                <a href="<?php echo e(route('manager.feedbacks.index')); ?>" 
+                                class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 
+                                <?php echo e(request()->routeIs('manager.feedbacks.index') ? 'bg-gray-200 font-semibold' : ''); ?>">
+                                    
+                                    
+                                    <svg class="w-6 h-6 text-gray-500 transition duration-75" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path fill-rule="evenodd" d="M10 2.5a.5.5 0 01.5.5v4a.5.5 0 01-1 0v-4a.5.5 0 01.5-.5zM4 9a.5.5 0 00-.5.5v1a.5.5 0 001 0v-1A.5.5 0 004 9zm12-.5a.5.5 0 01.5.5v1a.5.5 0 01-1 0v-1a.5.5 0 01.5-.5zM7.5 4a.5.5 0 000 1h5a.5.5 0 000-1h-5zM4.5 7a.5.5 0 01.5.5v.5a.5.5 0 01-1 0v-.5a.5.5 0 01.5-.5zm11 0a.5.5 0 01.5.5v.5a.5.5 0 01-1 0v-.5a.5.5 0 01.5-.5zM8 12.5a.5.5 0 01.5-.5h3a.5.5 0 010 1h-3a.5.5 0 01-.5-.5zM10 16a.5.5 0 00-.5.5v1a.5.5 0 001 0v-1a.5.5 0 00-.5-.5z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    
+                                    <span class="ml-3">Umpan Balik Pelanggan</span>
+                                </a>
+                            </li>
                          </ul>
                     </div>
                 </div>

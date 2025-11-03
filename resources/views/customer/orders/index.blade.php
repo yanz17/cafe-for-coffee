@@ -33,13 +33,15 @@
                         </span>
                     </div>
                     
-                    {{-- KOREKSI UTAMA: BLOK TOMBOL FEEDBACK --}}
+                    @php
+                        $feedback = \App\Models\Feedback::where('order_id', $order->id)->first();
+                    @endphp
+
                     <div class="mt-4 text-right flex justify-end items-center space-x-3">
-                        
                         @if ($order->status_pesanan === 'selesai')
-                            @if ($order->feedback)
+                            @if ($feedback) {{-- Menggunakan variabel $feedback yang baru --}}
                                 {{-- Sudah memberikan feedback --}}
-                                <span class="text-green-600 font-semibold text-sm">Feedback Terkirim (Rating: {{ $order->feedback->rating }})</span>
+                                <span class="text-green-600 font-semibold text-sm">Feedback Terkirim (Rating: {{ $feedback->rating }})</span>
                             @else
                                 {{-- Tombol untuk menampilkan Modal --}}
                                 <button 
@@ -49,10 +51,8 @@
                                 </button>
                             @endif
                         @endif
-
                         <a href="{{ route('customer.orders.show', $order) }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Lihat Detail & Instruksi &rarr;</a>
                     </div>
-                    {{-- AKHIR BLOK TOMBOL FEEDBACK --}}
 
                 </div>
                 @empty

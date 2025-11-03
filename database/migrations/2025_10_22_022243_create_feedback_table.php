@@ -13,11 +13,6 @@ return new class extends Migration
     {
         Schema::create('feedback', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
-        });
-
-        Schema::create('feedbacks', function (Blueprint $table) {
-            $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Pelanggan yang memberi feedback
             $table->foreignId('order_id')->constrained()->onDelete('cascade')->unique(); // Umpan balik terkait pesanan tertentu (unique agar 1 pesanan hanya 1 feedback)
             $table->integer('rating')->nullable(); // Skala 1-5

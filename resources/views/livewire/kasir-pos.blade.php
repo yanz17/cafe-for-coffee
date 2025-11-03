@@ -133,3 +133,31 @@
         
     </div>
 </div>
+
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.on('open-invoice-tab', (orderId) => { // <--- Langsung terima ID sebagai parameter
+            
+            // Kunci Perbaikan 1: Ambil ID dari array jika diperlukan, atau langsung dari parameter
+            let id;
+            if (Array.isArray(orderId) && orderId.length > 0) {
+                 id = orderId[0];
+            } else {
+                 id = orderId;
+            }
+            
+            // Kunci Perbaikan 2: Pastikan itu adalah integer yang valid
+            const finalId = parseInt(id);
+
+            if (finalId > 0 && !isNaN(finalId)) {
+                const invoiceUrl = `/kasir/order/${finalId}/invoice`;
+                
+                // Membuka URL Invoice di tab baru
+                window.open(invoiceUrl, '_blank'); 
+            } else {
+                console.error('FINAL ERROR: Gagal mengambil Order ID. Payload:', orderId);
+                alert('Transaksi berhasil, tetapi gagal mencetak struk (ID tidak valid).');
+            }
+        });
+    });
+</script>

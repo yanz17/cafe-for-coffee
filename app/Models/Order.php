@@ -65,7 +65,7 @@ class Order extends Model
 
     public function feedback()
     {
-        return $this->hasOne(Feedback::class);
+        return $this->hasOne(\App\Models\Feedback::class, 'order_id', 'id');
     }
 
 

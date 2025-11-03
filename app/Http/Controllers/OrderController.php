@@ -147,15 +147,16 @@ class OrderController extends Controller
 
     public function completeOrder(Order $order)
     {
-        // 1. Validasi Status: Hanya pesanan yang LUNAS dan sedang DIPROSES yang bisa diselesaikan
+        // 1. Validasi Status
         if ($order->status_pembayaran !== 'lunas' || $order->status_pesanan !== 'diproses') {
             return back()->with('error', 'Pesanan harus lunas dan diproses sebelum diselesaikan.');
         }
         
         DB::beginTransaction();
+        
         try {
             // 2. Kurangi Stok Bahan Baku
-            $order->deductStock(); // Panggil method yang baru dibuat
+            $order->deductStock(); 
             
             // 3. Ubah Status Pesanan menjadi Selesai
             $order->update([
@@ -163,12 +164,20 @@ class OrderController extends Controller
             ]);
 
             DB::commit();
-            return back()->with('success', 'Pesanan #' . $order->nomor_pesanan . ' telah SELESAI. Stok bahan baku telah diperbarui.');
+            
+            // KOREKSI A (RETURN SUKSES): Redirect ke Invoice
+            return redirect()->route('kasir.orders.invoice', $order)
+                            ->with('success', 'Pesanan selesai. Struk siap dicetak.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Anda mungkin ingin menambahkan logic untuk menangani stok yang tidak cukup di sini
-            return back()->with('error', 'Gagal menyelesaikan pesanan dan mengurangi stok: ' . $e->getMessage());
+            
+            // KOREKSI B (RETURN ERROR): Tampilkan pesan error dan kembali
+            // Logging error agar Manajer bisa cek
+            \Illuminate\Support\Facades\Log::error("Stock Deduction Failed for Order #" . $order->id . ": " . $e->getMessage());
+            
+            // Kembalikan ke halaman daftar pesanan dengan pesan error
+            return back()->with('error', 'Gagal menyelesaikan pesanan. Stok tidak cukup atau terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -245,6 +254,28 @@ class OrderController extends Controller
             'payment_method_final' => $order->payment_method_final ?? 'Online/Konfirmasi Kasir',
         ]);
 
-        return back()->with('success', 'Pesanan #' . $order->nomor_pesanan . ' berhasil dikonfirmasi dan diproses.');
+       $invoiceUrl = route('kasir.orders.invoice', $order);
+
+        // KOREKSI UTAMA: Ganti return back() dengan redirect() eksplisit ke index
+        return redirect()->route('kasir.orders.index')
+            ->with('success', 'Pesanan berhasil dikonfirmasi dan diproses. Struk siap dicetak.')
+            ->with('print_invoice_url', $invoiceUrl);
+    }
+
+    /**
+     * Menampilkan view Invoice/Struk untuk pesanan yang sudah selesai.
+     */
+    public function showInvoice(\App\Models\Order $order)
+    {
+        // 1. Amankan Akses: Hanya pesanan lunas dan selesai yang seharusnya dicetak
+        if ($order->status_pembayaran !== 'lunas') {
+            return redirect()->back()->with('error', 'Invoice hanya tersedia untuk pesanan yang sudah lunas.');
+        }
+
+        // 2. Eager Load data yang dibutuhkan: Items, Menu, dan User (Pelanggan/Kasir)
+        $order->load(['items.menu', 'user']);
+
+        // 3. Tampilkan View Invoice
+        return view('kasir.orders.invoice', compact('order'));
     }
 }

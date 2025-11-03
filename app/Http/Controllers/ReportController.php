@@ -81,11 +81,11 @@ class ReportController extends Controller
     
     public function salesChartData()
     {
-        // Periode 30 hari terakhir
+        // Pastikan Carbon dan DB di-import
         $endDate = now()->endOfDay();
         $startDate = now()->subDays(30)->startOfDay();
 
-        $salesData = Order::select(
+        $salesData = \App\Models\Order::select(
                 DB::raw('DATE(created_at) as date'),
                 DB::raw('SUM(total_harga) as total')
             )
@@ -94,16 +94,16 @@ class ReportController extends Controller
             ->groupBy('date')
             ->orderBy('date', 'asc')
             ->get()
-            ->keyBy('date'); // Kunci hasil dengan tanggal untuk pengisian hari kosong
+            ->keyBy('date');
 
-        // Inisialisasi data untuk 30 hari penuh (membuat hari yang kosong jadi 0)
+        // Inisialisasi data untuk 30 hari penuh
         $labels = [];
         $data = [];
         $currentDate = clone $startDate;
 
         while ($currentDate <= $endDate) {
             $dateString = $currentDate->toDateString();
-            $labels[] = $currentDate->format('d M'); // Format untuk label chart
+            $labels[] = $currentDate->format('d M'); 
             
             $total = $salesData->get($dateString)['total'] ?? 0;
             $data[] = (int) $total;

@@ -28,5 +28,20 @@ foreach ($attributes->all() as $__key => $__value) {
 
 unset($__defined_vars, $__key, $__value); ?>
 
-<input <?php if($disabled): echo 'disabled'; endif; ?> <?php echo e($attributes->merge(['class' => 'border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm'])); ?>>
-<?php /**PATH C:\laragon\www\cafe-for-coffee\resources\views/components/text-input.blade.php ENDPATH**/ ?>
+<input <?php echo e($attributes->merge(['class' => '
+    border-gray-300 
+    bg-white
+    text-gray-900
+    
+    appearance-none 
+    
+    py-2 
+    px-3         
+    h-10 
+    
+    focus:border-indigo-500 
+    focus:ring-indigo-500 
+    rounded-lg 
+    shadow-sm
+    w-full       
+'])); ?> style="padding-left: 0.75rem !important; padding-right: 0.75rem !important;"><?php /**PATH C:\laragon\www\cafe-for-coffee\resources\views/components/text-input.blade.php ENDPATH**/ ?>

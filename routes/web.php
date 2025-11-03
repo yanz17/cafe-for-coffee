@@ -92,6 +92,9 @@ Route::prefix('manager')->middleware(['auth', 'role:'. User::ROLE_MANAGER])->gro
         Route::get('customers', [ReportController::class, 'customerSegmentation'])->name('customers');
         Route::get('recommendations', [ReportController::class, 'productRecommendations'])->name('recommendations');
     });
+
+    // 7. KELOLA FEEDBACK PELANGGAN
+    Route::get('/manager/feedbacks', [\App\Http\Controllers\FeedbackController::class, 'indexFeedbacks'])->name('manager.feedbacks.index');
 });
 
 // Route untuk Kasir
@@ -113,6 +116,8 @@ Route::middleware(['auth', 'role:'. User::ROLE_KASIR])->group(function () {
     Route::put('/kasir/order/{order}/revert', [OrderController::class, 'revertOrder'])->name('kasir.orders.revert');
     // BARU: Proses Pesanan (Menunggu Pembayaran -> Diproses/Aktif)
     Route::put('/kasir/order/{order}/process', [OrderController::class, 'processOrder'])->name('kasir.orders.process');
+    // BARU: Tampilkan Invoice Pesanan
+    Route::get('/kasir/order/{order}/invoice', [\App\Http\Controllers\OrderController::class, 'showInvoice'])->name('kasir.orders.invoice');
 });
 
 // Route untuk Pelanggan
