@@ -52,11 +52,6 @@
                         </div>
                          
                          <ul class="space-y-1 mt-3">
-                            <li class="font-semibold text-gray-800">Analisis Penjualan:</li>
-                            <li><a href="{{ route('manager.reports.sales') }}" class="text-sm text-indigo-600 hover:text-indigo-800">Laporan Keuangan Dasar (Penjualan)</a></li>
-                            <li><a href="{{ route('manager.reports.charts') }}" class="text-sm text-indigo-600 hover:text-indigo-800">Visualisasi & Tren Penjualan</a></li>
-                            <li><a href="{{ route('manager.reports.popularity') }}" class="text-sm text-indigo-600 hover:text-indigo-800">Popularitas Produk</a></li>
-                            
                             <li class="font-semibold text-gray-800 pt-2">Manajemen Menu:</li>
                             <li>
                                 <a href="{{ route('manager.menus.index') }}" class="text-sm text-yellow-600 hover:text-yellow-800">
@@ -74,7 +69,6 @@
                             <li><a href="{{ route('manager.reports.customers') }}" class="text-sm text-green-600 hover:text-green-800">Segmentasi Pelanggan (Top Buyers)</a></li>
                             <li><a href="{{ route('manager.reports.recommendations') }}" class="text-sm text-green-600 hover:text-green-800">Rekomendasi Produk</a></li>
                             <li><a href="{{ route('manager.reports.inventory_status') }}" class="text-sm text-red-600 hover:text-red-800">Status Stok Kritis</a></li>
-
                             <li>
                                 <a href="{{ route('manager.feedbacks.index') }}" 
                                 class="flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-gray-100 

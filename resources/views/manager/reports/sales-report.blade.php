@@ -2,7 +2,7 @@
 
 @section('header')
     <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        {{ __('Laporan Keuangan Dasar (Penjualan)') }}
+        {{ __('Laporan Penjualan OLAP & Visualisasi') }}
     </h2>
 @endsection
 
@@ -11,53 +11,132 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-xl p-6">
                 
-                <h3 class="text-2xl font-bold mb-4">Laporan Penjualan (Periode: {{ $startDate }} s/d {{ $endDate }})</h3>
+                <h3 class="text-2xl font-bold mb-6">Analisis Penjualan Dinamis</h3>
 
-                {{-- STATS SUMMARY --}}
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div class="p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
-                        <p class="text-sm text-indigo-700">Total Pendapatan</p>
-                        <p class="text-2xl font-bold">Rp {{ number_format($summary['total_penjualan'], 0, ',', '.') }}</p>
+                {{-- FORM FILTER & ROLL-UP (SLICING & DICING) --}}
+                <form method="GET" action="{{ route('manager.reports.sales') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-8 p-4 border rounded-lg bg-gray-50">
+                    
+                    <div>
+                        <label for="start_date" class="block text-sm font-medium text-gray-700">Mulai</label>
+                        <input type="date" name="start_date" value="{{ $startDate }}" class="mt-1 block w-full rounded-lg border-gray-300">
                     </div>
-                    <div class="p-4 bg-gray-50 border-l-4 border-gray-500 rounded-lg">
-                        <p class="text-sm text-gray-700">Total Transaksi</p>
-                        <p class="text-2xl font-bold">{{ $summary['total_order'] }}</p>
+                    <div>
+                        <label for="end_date" class="block text-sm font-medium text-gray-700">Sampai</label>
+                        <input type="date" name="end_date" value="{{ $endDate }}" class="mt-1 block w-full rounded-lg border-gray-300">
                     </div>
-                    <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
-                        <p class="text-sm text-green-700">Total Cash</p>
-                        <p class="text-xl font-bold">Rp {{ number_format($summary['total_cash'], 0, ',', '.') }}</p>
+
+                    {{-- DIMENSI GROUPING (ROLL-UP) --}}
+                    <div>
+                        <label for="group_by" class="block text-sm font-medium text-gray-700">Kelompokkan Berdasarkan (Roll-up)</label>
+                        <select name="group_by" class="mt-1 block w-full rounded-lg border-gray-300">
+                            <option value="date" {{ $groupBy == 'date' ? 'selected' : '' }}>Tanggal Harian</option>
+                            <option value="category" {{ $groupBy == 'category' ? 'selected' : '' }}>Kategori Menu</option>
+                            <option value="method" {{ $groupBy == 'method' ? 'selected' : '' }}>Metode Pembayaran</option>
+                            <option value="menu" {{ $groupBy == 'menu' ? 'selected' : '' }}>Nama Menu</option> {{-- BARU: Opsi Nama Menu --}}
+                        </select>
                     </div>
-                    <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
-                        <p class="text-sm text-blue-700">Total Digital</p>
-                        <p class="text-xl font-bold">Rp {{ number_format($summary['total_qris'] + $summary['total_transfer'], 0, ',', '.') }}</p>
+
+                    {{-- SLICING/DICING FILTER --}}
+                    <div>
+                        <label for="payment_method" class="block text-sm font-medium text-gray-700">Filter Metode Bayar</label>
+                        <select name="payment_method" class="mt-1 block w-full rounded-lg border-gray-300">
+                            <option value="">-- Semua Metode --</option>
+                            @foreach (['Cash', 'QRIS', 'Transfer'] as $method)
+                                <option value="{{ $method }}" {{ $paymentMethod == $method ? 'selected' : '' }}>{{ $method }}</option>
+                            @endforeach
+                        </select>
                     </div>
+
+                    <button type="submit" class="w-full md:w-auto self-end bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">
+                        Tampilkan Data
+                    </button>
+                </form>
+
+                <hr class="mb-8">
+                
+                {{-- VISUALISASI DATA (GRAFIK) --}}
+                <h3 class="text-xl font-bold mb-4">Grafik Penjualan Berdasarkan Dimensi: {{ ucfirst($groupBy) }}</h3>
+                <div class="relative h-[400px] w-full mb-10">
+                    <canvas id="salesChart"></canvas>
                 </div>
 
-                {{-- DETAIL TRANSAKSI --}}
-                <h3 class="text-xl font-bold mb-3 border-t pt-4">Detail Transaksi</h3>
+                {{-- TABEL DATA (DRILL-DOWN) --}}
+                <h3 class="text-xl font-bold mb-4 border-t pt-4">Data Detail (Drill-down)</h3>
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left">No. Pesanan</th>
-                            <th class="px-6 py-3 text-left">Waktu</th>
-                            <th class="px-6 py-3 text-right">Total</th>
-                            <th class="px-6 py-3 text-center">Metode Bayar</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $groupBy == 'menu' ? 'Nama Menu' : ucfirst($groupBy) }}</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Transaksi</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Pendapatan (Rp)</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse ($sales as $order)
+                        @forelse ($salesData as $data)
                         <tr>
-                            <td class="px-6 py-4 font-medium">{{ $order->nomor_pesanan }}</td>
-                            <td class="px-6 py-4 text-sm">{{ $order->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="px-6 py-4 text-right font-semibold">Rp {{ number_format($order->total_harga, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 text-center">{{ $order->payment_method_final ?? 'Cash' }}</td>
+                            <td class="px-6 py-4 font-medium">{{ $data->label ?? 'N/A' }}</td>
+                            <td class="px-6 py-4 text-right">{{ number_format($data->total_orders) }}</td>
+                            <td class="px-6 py-4 text-right font-bold text-indigo-700">Rp {{ number_format($data->total_revenue, 0, ',', '.') }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Tidak ada transaksi lunas dalam periode ini.</td></tr>
+                        <tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Tidak ada data penjualan dalam periode ini.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
+                
             </div>
         </div>
     </div>
+    
+    {{-- SCRIPT CHART.JS UNTUK VISUALISASI DINAMIS --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Data dari Controller
+        const chartLabels = @json($chartLabels);
+        const chartSalesData = @json($chartData);
+        const chartGrouping = @json($groupBy);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            // Hapus instance lama jika ada (untuk Livewire/refresh)
+            if (window.salesChartInstance) {
+                window.salesChartInstance.destroy();
+            }
+            
+            window.salesChartInstance = new Chart(ctx, {
+                type: 'bar', // Gunakan Bar Chart untuk perbandingan yang lebih baik
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Pendapatan (Rp)',
+                        data: chartSalesData,
+                        backgroundColor: chartGrouping === 'method' ? ['#4f46e5', '#10b981', '#f59e0b'] : '#4f46e5',
+                        borderColor: '#4f46e5',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Pendapatan (Rp)' },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        },
+                        x: {
+                             title: { display: true, text: chartGrouping === 'date' ? 'Tanggal' : (chartGrouping === 'category' ? 'Kategori' : (chartGrouping === 'menu' ? 'Nama Menu' : 'Metode Pembayaran')) }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        });
+    </script>
 @endsection

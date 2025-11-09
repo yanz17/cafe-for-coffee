@@ -138,4 +138,48 @@ unset($__errorArgs, $__bag); ?>
         <?php endif; ?>
     </div>
 <?php $__env->stopSection(); ?>
+
+<?php if($order->status_pembayaran == 'menunggu' && $order->snap_token): ?>
+    
+    
+    <div class="mt-6 text-center">
+        <button id="pay-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
+            Lanjutkan Pembayaran
+        </button>
+        <p class="text-sm text-gray-500 mt-2">Jika pop-up tidak muncul otomatis, klik tombol di atas.</p>
+    </div>
+
+    
+    <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="<?php echo e(env('MIDTRANS_CLIENT_KEY')); ?>"></script>
+    
+    <script type="text/javascript">
+        const snapToken = '<?php echo e($order->snap_token); ?>';
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Panggil pembayaran secara otomatis saat halaman dimuat
+            if (snapToken) {
+                // Panggil pop-up Midtrans
+                window.snap.pay(snapToken, {
+                    onSuccess: function(result){
+                        alert("Pembayaran Berhasil!");
+                        window.location.reload(); 
+                    },
+                    onPending: function(result){
+                        alert("Pembayaran Anda sedang diproses.");
+                        window.location.reload(); 
+                    },
+                    onClose: function(){
+                        // Opsional: Jika user menutup pop-up tanpa menyelesaikan pembayaran
+                        console.log('Pembayaran ditutup.');
+                    }
+                });
+            }
+        });
+        
+        // Listener untuk tombol manual
+        document.getElementById('pay-button').onclick = function () {
+            window.snap.pay(snapToken);
+        };
+    </script>
+<?php endif; ?>
 <?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\laragon\www\cafe-for-coffee\resources\views/customer/orders/show.blade.php ENDPATH**/ ?>

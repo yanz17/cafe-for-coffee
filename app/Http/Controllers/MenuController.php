@@ -39,7 +39,7 @@ class MenuController extends Controller
      */
     public function store(Request $request)
     {
-        // Lakukan validasi terlebih dahulu (tetap wajib!)
+        // KOREKSI UTAMA: Lakukan validasi dan dapatkan data yang divalidasi dalam satu langkah
         $validatedData = $request->validate([
             'nama' => 'required|string|max:255|unique:menus,nama',
             'deskripsi' => 'nullable|string',
@@ -48,31 +48,23 @@ class MenuController extends Controller
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
         
-        // Siapkan data untuk penyimpanan
-        $dataToStore = $request->except(['_token']); // Hapus field _token
-        $dataToStore['foto'] = null; // Inisialisasi foto agar tidak ada path temporer yang tersimpan
-
-        // Logika Upload Foto
+        // Logika Upload Foto (menggunakan $validatedData)
         if ($request->hasFile('foto')) {
             $file = $request->file('foto');
             $fileName = time() . '_' . $file->getClientOriginalName();
-            $folder = 'menu_photos';
-            
-            $path = \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($folder, $file, $fileName);
+            $path = \Illuminate\Support\Facades\Storage::disk('public')->putFileAs('menu_photos', $file, $fileName);
             
             if ($path) {
-                $dataToStore['foto'] = $path; // Simpan path yang BENAR
+                $validatedData['foto'] = $path; // Simpan path yang benar
             } else {
-                return back()->withInput()->with('error', 'Gagal menyimpan file. Cek izin folder storage/app/public.');
+                return back()->withInput()->with('error', 'Gagal menyimpan file foto.');
             }
+        } else {
+            $validatedData['foto'] = null;
         }
 
-        // KOREKSI: Gunakan array yang sudah diolah ($dataToStore)
-        $dataToStore = $request->except(['_token']);
-
-        $safeData = array_merge($request->validated(), ['foto' => $dataToStore['foto']]);
-
-        \App\Models\Menu::create($safeData);
+        // Gunakan array $validatedData yang sudah aman
+        \App\Models\Menu::create($validatedData); 
 
         return redirect()->route('manager.menus.index')
                         ->with('success', 'Menu berhasil ditambahkan.');

@@ -32,41 +32,54 @@
                     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">{{ session('error') }}</div>
                 @endif
 
-                {{-- Bagian 1: Pesanan Menunggu Konfirmasi Pembayaran (Online/QRIS) --}}
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
-                        <h3 class="text-xl font-bold mb-4 border-b pb-2 text-yellow-700">
-                            Pesanan Menunggu Pembayaran (Online/Transfer) ({{ $pendingOrders->count() }})
-                        </h3>
+            {{-- Bagian 1: Pesanan Menunggu Konfirmasi Pembayaran (Online/QRIS) --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    <h3 class="text-xl font-bold mb-4 border-b pb-2 text-yellow-700">
+                        Pesanan Menunggu Pembayaran (Online/Transfer) ({{ $pendingOrders->count() }})
+                    </h3>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {{-- KOREKSI: MENGGUNAKAN STRUKTUR TABEL RAPI --}}
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left">No. Pesanan</th>
+                                <th class="px-6 py-3 text-left">Pelanggan</th> 
+                                <th class="px-6 py-3 text-right">Total</th>
+                                <th class="px-6 py-3 text-left">Tipe</th>
+                                <th class="px-6 py-3 text-center">Aksi Konfirmasi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
                             @forelse ($pendingOrders as $order)
-                                <tr>
-                                    <td class="px-6 py-4 font-medium">#{{ $order->nomor_pesanan }}</td>
-                                    <td class="px-6 py-4">{{ $order->user->name ?? 'Kasir Input' }}</td>
-                                    <td class="px-6 py-4">Rp {{ number_format($order->total_harga, 0, ',', '.') }}</td>
-                                    
-                                    {{-- BARIS YANG HILANG --}}
-                                    <td class="px-6 py-4">{{ $order->status_pembayaran }}</td>
-                                    <td class="px-6 py-4">{{ $order->tipe_pemesanan }}</td>
-                                    
-                                    <td class="px-6 py-4 text-center">
-                                        {{-- Tombol ACC Pembayaran/Proses --}}
-                                        <form action="{{ route('kasir.orders.process', $order) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin pesanan ini sudah dibayar dan siap diproses?');">
-                                            @csrf
-                                            @method('PUT')
-                                            <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">
-                                                ACC & Proses
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
+                            <tr class="hover:bg-yellow-50/50 transition duration-150">
+                                <td class="px-6 py-4 font-medium">#{{ $order->nomor_pesanan }}</td>
+                                <td class="px-6 py-4">{{ $order->user->name ?? 'Pelanggan Online' }}</td>
+                                <td class="px-6 py-4 text-right font-semibold">Rp {{ number_format($order->total_harga, 0, ',', '.') }}</td>
+                                <td class="px-6 py-4">{{ ucfirst(str_replace('_', ' ', $order->tipe_pemesanan)) }}</td>
+                                
+                                <td class="px-6 py-4 text-center">
+                                    {{-- Tombol ACC Pembayaran/Proses --}}
+                                    <form action="{{ route('kasir.orders.process', $order) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin pesanan ini sudah dibayar dan siap diproses?');">
+                                        @csrf
+                                        @method('PUT')
+                                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs shadow-md">
+                                            ACC & Proses
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
                             @empty
-                                <p class="text-gray-500 col-span-3">Tidak ada pesanan menunggu pembayaran saat ini.</p>
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">Tidak ada pesanan menunggu pembayaran saat ini.</td>
+                                </tr>
                             @endforelse
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
+                    {{-- AKHIR STRUKTUR TABEL --}}
+
                 </div>
+            </div>
 
                 {{-- Bagian 2: Pesanan yang Sedang Diproses --}}
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

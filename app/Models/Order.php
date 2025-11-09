@@ -25,6 +25,8 @@ class Order extends Model
         'amount_paid',
         'change_due',
         'payment_method_final',
+        'snap_token', // <-- Tambahkan ini
+        'payment_url', // <-- Tambahkan ini
     ];
     public function items()
     {

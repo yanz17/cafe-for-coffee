@@ -123,3 +123,47 @@
         @endif
     </div>
 @endsection
+
+@if ($order->status_pembayaran == 'menunggu' && $order->snap_token)
+    
+    {{-- Tombol Lanjutkan Pembayaran (Jika pop-up tertutup) --}}
+    <div class="mt-6 text-center">
+        <button id="pay-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
+            Lanjutkan Pembayaran
+        </button>
+        <p class="text-sm text-gray-500 mt-2">Jika pop-up tidak muncul otomatis, klik tombol di atas.</p>
+    </div>
+
+    {{-- SCRIPT MIDTRANS SNAPS --}}
+    <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}"></script>
+    
+    <script type="text/javascript">
+        const snapToken = '{{ $order->snap_token }}';
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Panggil pembayaran secara otomatis saat halaman dimuat
+            if (snapToken) {
+                // Panggil pop-up Midtrans
+                window.snap.pay(snapToken, {
+                    onSuccess: function(result){
+                        alert("Pembayaran Berhasil!");
+                        window.location.reload(); 
+                    },
+                    onPending: function(result){
+                        alert("Pembayaran Anda sedang diproses.");
+                        window.location.reload(); 
+                    },
+                    onClose: function(){
+                        // Opsional: Jika user menutup pop-up tanpa menyelesaikan pembayaran
+                        console.log('Pembayaran ditutup.');
+                    }
+                });
+            }
+        });
+        
+        // Listener untuk tombol manual
+        document.getElementById('pay-button').onclick = function () {
+            window.snap.pay(snapToken);
+        };
+    </script>
+@endif

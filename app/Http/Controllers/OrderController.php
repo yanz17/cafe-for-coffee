@@ -240,26 +240,35 @@ class OrderController extends Controller
 
     public function processOrder(Order $order)
     {
+
         // Cek Kritis: Pastikan pesanan sedang menunggu pembayaran
         if ($order->status_pembayaran !== 'menunggu') {
             return back()->with('error', 'Pesanan ini sudah diproses atau dibatalkan.');
         }
         
-        // Asumsi: Pembayaran sudah diterima/dikonfirmasi oleh Kasir
-        
-        $order->update([
-            'status_pembayaran' => 'lunas',
-            'status_pesanan' => 'diproses', // Pindah ke status aktif
-            // Update metode pembayaran final (jika belum disetel, set sebagai konfirmasi)
-            'payment_method_final' => $order->payment_method_final ?? 'Online/Konfirmasi Kasir',
-        ]);
+        DB::beginTransaction();
+        try {
+            $order->update([
+                'status_pembayaran' => 'lunas',
+                'status_pesanan' => 'diproses', 
+                'payment_method_final' => $order->payment_method_final ?? 'Online/Konfirmasi Kasir',
+            ]);
+            
+            DB::commit();
 
-       $invoiceUrl = route('kasir.orders.invoice', $order);
+            // KUNCI: Siapkan URL Invoice untuk flash session
+            $invoiceUrl = route('kasir.orders.invoice', $order);
 
-        // KOREKSI UTAMA: Ganti return back() dengan redirect() eksplisit ke index
-        return redirect()->route('kasir.orders.index')
-            ->with('success', 'Pesanan berhasil dikonfirmasi dan diproses. Struk siap dicetak.')
-            ->with('print_invoice_url', $invoiceUrl);
+            // Redirect kembali ke index dengan sinyal cetak
+            return back()
+                ->with('success', 'Pesanan berhasil dikonfirmasi dan diproses. Struk siap dicetak.')
+                ->with('print_invoice_url', $invoiceUrl); // URL untuk JS global
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Processing Failed: " . $e->getMessage());
+            return back()->with('error', 'Gagal memproses pesanan: ' . $e->getMessage());
+        }
     }
 
     /**

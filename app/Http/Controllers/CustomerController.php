@@ -2,46 +2,42 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Menu;
 use App\Models\Order;
-use App\Models\Feedback;
+use App\Models\Menu;
 use App\Models\OrderItem;
+use App\Models\Feedback;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth; // Wajib: Untuk Auth::user()
+use Midtrans\Config;                   // Wajib: Untuk Konfigurasi Midtrans
+use Midtrans\Snap;                     // Wajib: Untuk Snap Token
 
 class CustomerController extends Controller
 {
-    // 1. Tampilkan Daftar Menu
+        // 1. Tampilkan Daftar Menu
     public function index()
     {
-        // Ambil semua menu yang tersedia dan urutkan berdasarkan kategori
-        $menus = \App\Models\Menu::where('is_tersedia', true)
-                                ->orderBy('kategori')
-                                ->orderBy('nama')
-                                ->get();
-        
-        // KOREKSI UTAMA: Kelompokkan menu berdasarkan kategori
+        $menus = Menu::where('is_tersedia', 1)->orderBy('kategori')->orderBy('nama')->get();
         $groupedMenus = $menus->groupBy('kategori');
-
         $recommendations = $this->getPersonalRecommendations();
 
         return view('customer.menu.index', [
-            'groupedMenus' => $groupedMenus, // MENGGANTI $menus
+            'groupedMenus' => $groupedMenus,
             'recommendations' => $recommendations,
         ]);
     }
-
+    
+    // Helper untuk Rekomendasi (dianggap ada)
     private function getPersonalRecommendations()
     {
         $userId = auth()->id();
         if (!$userId) {
             return collect(); 
         }
-
-        // A. Cari 5 item menu yang paling sering dibeli oleh pengguna ini (User Top Items)
-        //    Query ini tetap dibutuhkan untuk menentukan apa yang TIDAK perlu direkomendasikan.
-        $userTopItems = \App\Models\OrderItem::select('menu_id', DB::raw('SUM(kuantitas) as total_bought'))
+        // Logika rekomendasi diletakkan di sini...
+        // Menggunakan logika yang sudah kita buat sebelumnya: mencari item yang kurang populer
+        $userTopItems = OrderItem::select('menu_id', DB::raw('SUM(kuantitas) as total_bought'))
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.user_id', $userId)
             ->where('orders.status_pembayaran', 'lunas')
@@ -51,72 +47,60 @@ class CustomerController extends Controller
             ->pluck('menu_id')
             ->toArray();
 
-        // B. Query Baru: Cari item yang PALING SEDIKIT dibeli secara global (Underperforming Items)
-        $underperformingItems = \App\Models\OrderItem::select('order_items.menu_id', DB::raw('COUNT(order_items.menu_id) as global_count'))
+        if (empty($userTopItems)) {
+            return collect(); 
+        }
+
+        $underperformingItems = OrderItem::select('order_items.menu_id', DB::raw('COUNT(order_items.menu_id) as global_count'))
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.status_pembayaran', 'lunas')
             ->groupBy('order_items.menu_id')
-            
-            // KUNCI PERBAIKAN: Urutkan secara ASCENDING (paling sedikit dibeli)
             ->orderBy('global_count', 'asc') 
-            
             ->limit(5)
             ->pluck('order_items.menu_id');
 
-        // C. Ambil detail menu untuk rekomendasi
-        $recommendedMenus = \App\Models\Menu::whereIn('id', $underperformingItems)
-                                        
-                                        // KOREKSI: JANGAN merekomendasikan item yang sudah menjadi favorit
-                                        // Kita filter di sini agar lebih fleksibel
+        $recommendedMenus = Menu::whereIn('id', $underperformingItems)
                                         ->whereNotIn('id', $userTopItems) 
-                                        
-                                        // Final check: Pastikan menu tersedia
-                                        ->where('is_tersedia', true)
+                                        ->where('is_tersedia', 1)
                                         ->get();
 
-        // Jika rekomendasi masih kosong, berikan menu paling sedikit dibeli (tanpa pengecualian favorit)
-        if ($recommendedMenus->isEmpty() && !empty($userTopItems)) {
-            $recommendedMenus = \App\Models\Menu::whereIn('id', $underperformingItems)
-                                                ->where('is_tersedia', true)
-                                                ->get();
+        if ($recommendedMenus->isEmpty()) {
+             $recommendedMenus = Menu::whereIn('id', $underperformingItems)->where('is_tersedia', 1)->get();
         }
         
         return $recommendedMenus;
     }
 
+
     // 2. Proses Checkout/Penyimpanan Pesanan
     public function storeOrder(Request $request)
     {
-        // 1. Validasi input
         $request->validate([
             'items' => 'required|string',
-            // HAPUS VALIDASI payment_method, tipe_pemesanan, meja untuk sementara 
-            // untuk mengisolasi error di Mass Assignment utama.
+            'tipe_pemesanan' => 'required|in:dine_in,take_away',
+            'meja' => 'nullable|string|max:10',
+            'payment_method' => 'required|string', // Kunci Percabangan
         ]);
 
         $items = json_decode($request->items, true);
-        
-        // Pastikan menu ID yang dikirim ada di database.
         $menuIds = array_column($items, 'menu_id');
-        $menuCache = \App\Models\Menu::whereIn('id', $menuIds)->pluck('harga', 'id');
+        $menuCache = Menu::whereIn('id', $menuIds)->get()->keyBy('id');
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
 
         try {
             $totalHarga = 0;
             $orderItems = [];
-
-            // 2. Hitung Total dan Siapkan Item
+            
+            // 1. Hitung Total dan Siapkan Item
             foreach ($items as $item) { 
                 $menuId = $item['menu_id'];
                 $kuantitas = (int) $item['kuantitas'];
                 
-                // Cek Kritis: Pastikan Menu ID ada di cache (memperbaiki findOrFail)
-                if (!isset($menuCache[$menuId])) {
-                    throw new \Exception("Menu ID #{$menuId} tidak valid.");
-                }
+                if (!isset($menuCache[$menuId])) { throw new \Exception("Menu ID #{$menuId} tidak valid."); }
                 
-                $hargaSatuan = $menuCache[$menuId];
+                $menu = $menuCache[$menuId];
+                $hargaSatuan = $menu->harga;
                 $subtotal = $kuantitas * $hargaSatuan;
                 $totalHarga += $subtotal;
 
@@ -128,40 +112,88 @@ class CustomerController extends Controller
                 ];
             }
 
-            if ($totalHarga === 0) {
-                throw new \Exception("Keranjang kosong.");
-            }
+            if ($totalHarga === 0) { throw new \Exception("Keranjang kosong."); }
 
+            $user = Auth::user();
+            $nomorPesanan = 'WEB-' . Str::upper(Str::random(5)) . time();
+            $paymentMethod = $request->payment_method;
+            
+            $snapToken = null;
+            $paymentUrl = null;
+
+            // ===============================================
+            // KUNCI PERBAIKAN: PERCABANGAN LOGIKA PEMBAYARAN
+            // ===============================================
+
+            if ($paymentMethod === 'Cash' || $paymentMethod === 'Tunai (Bayar Saat Ambil)') {
+                // Skenario Tunai (Offline): Langsung pending, tidak panggil Midtrans
+                $statusPembayaran = 'menunggu';
+                
+            } else {
+                // Skenario Online (Midtrans): Panggil API
+                
+                // Siapkan Midtrans Item Detail
+                $midtransItemDetails = [];
+                foreach ($orderItems as $item) {
+                    $midtransItemDetails[] = [
+                        'id' => $item['menu_id'],
+                        'price' => $item['harga_satuan'],
+                        'quantity' => $item['kuantitas'],
+                        'name' => $menuCache[$item['menu_id']]->nama,
+                    ];
+                }
+
+                \Midtrans\Config::$serverKey = env('MIDTRANS_SERVER_KEY');
+                \Midtrans\Config::$isProduction = env('MIDTRANS_IS_PRODUCTION', false); 
+                \Midtrans\Config::$isSanitized = true;
+                \Midtrans\Config::$is3ds = true;
+
+                $payload = [
+                    'transaction_details' => ['order_id' => $nomorPesanan, 'gross_amount' => $totalHarga],
+                    'customer_details' => ['first_name' => $user->name, 'email' => $user->email],
+                    'item_details' => $midtransItemDetails, 
+                    'enabled_payments' => ['gopay', 'shopeepay', 'permata_va', 'bca_va', 'bni_va', 'bri_va', 'other_va', 'qris'],
+                ];
+                
+                // PANGGIL MIDTRANS API
+                $snapToken = \Midtrans\Snap::getSnapToken($payload);
+
+                $midtransBaseUrl = env('MIDTRANS_IS_PRODUCTION') ? 'https://app.midtrans.com' : 'https://app.sandbox.midtrans.com';
+                $paymentUrl = "{$midtransBaseUrl}/snap/v2/vtweb/{$snapToken}";
+                
+                $statusPembayaran = 'menunggu'; // Tetap menunggu update webhook
+            }
+            // ===============================================
+            
             // 3. Buat Order Header
-            $order = \App\Models\Order::create([
+            $order = Order::create([
                 'user_id' => auth()->id(),
-                'nomor_pesanan' => 'WEB-' . \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(5)) . time(),
+                'nomor_pesanan' => $nomorPesanan,
                 'total_harga' => $totalHarga,
                 'status_pesanan' => 'pending', 
-                'status_pembayaran' => 'menunggu',
-                // Gunakan nilai default/safe karena validasi di-skip
+                'status_pembayaran' => $statusPembayaran, 
                 'tipe_pemesanan' => $request->tipe_pemesanan ?? 'take_away', 
                 'meja' => $request->meja,
+                'snap_token' => $snapToken,        // Null jika tunai
+                'payment_url' => $paymentUrl,      // Null jika tunai
             ]);
 
             // 4. Buat Order Items
-            foreach ($orderItems as $item) {
-                $order->items()->create($item); 
-            }
+            foreach ($orderItems as $item) { $order->items()->create($item); }
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
             
+            // Redirect ke detail pesanan (View akan memicu pop-up Midtrans jika token ada)
             return redirect()->route('customer.orders.show', $order)
-                ->with('success', 'Pesanan Anda telah dibuat!')
+                ->with('success', 'Pesanan Anda telah dibuat. Silakan selesaikan pembayaran!')
                 ->with('clear_cart', true);
 
-        } catch (\Throwable $e) { // Menggunakan Throwable untuk menangkap fatal error
-            \Illuminate\Support\Facades\DB::rollBack();
-            
-            // Cek log untuk pesan error ini!
+        } catch (\Throwable $e) { 
+            DB::rollBack();
+            // Logging untuk debugging Midtrans/SQL
             \Illuminate\Support\Facades\Log::error("Final Checkout Failure: " . $e->getMessage() . " on line " . $e->getLine());
             
-            // Halaman akan di-redirect dengan pesan error (jika log tidak muncul)
+            // Kembalikan error yang ditangkap
             return back()->withInput()->with('error', 'Gagal memproses pesanan! Error: ' . $e->getMessage());
         }
     }
@@ -171,8 +203,9 @@ class CustomerController extends Controller
     {
         $orders = Order::where('user_id', auth()->id())
                        ->orderBy('created_at', 'desc')
-                       //->with('feedback')
+                       ->with('feedback') 
                        ->get();
+        
         return view('customer.orders.index', compact('orders'));
     }
 
@@ -183,34 +216,28 @@ class CustomerController extends Controller
             abort(403);
         }
         
-        // Eager Load Relasi Feedback (Penting!)
-        $order->load(['items.menu']); // <-- Tambahkan 'feedback' di sini!
-        
-        // Jika relasi tidak di-eager load, Blade di view akan memicu query yang crash.
-        
+        // Eager Load relasi items dan user untuk Midtrans detail
+        $order->load(['items.menu', 'user']); 
+
         return view('customer.orders.show', compact('order'));
     }
-
+    
     public function storeFeedback(Request $request, Order $order)
     {
-        // 1. Validasi Kepemilikan dan Status
         if ($order->user_id !== auth()->id() || $order->status_pesanan !== 'selesai') {
             abort(403, 'Aksi tidak diizinkan.');
         }
         
-        // 2. Cek apakah feedback sudah ada
-        if (\App\Models\Feedback::where('order_id', $order->id)->exists()) { // <-- Pastikan namespace benar
-                return back()->with('error', 'Anda sudah memberikan umpan balik untuk pesanan ini.');
-            }
+        if (\App\Models\Feedback::where('order_id', $order->id)->exists()) {
+            return back()->with('error', 'Anda sudah memberikan umpan balik untuk pesanan ini.');
+        }
 
-        // 3. Validasi Input
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'komentar' => 'nullable|string|max:500',
         ]);
 
-        // 4. Buat Feedback
-        Feedback::create([
+        \App\Models\Feedback::create([
             'user_id' => auth()->id(),
             'order_id' => $order->id,
             'rating' => $request->rating,

@@ -33,41 +33,54 @@
                     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"><?php echo e(session('error')); ?></div>
                 <?php endif; ?>
 
-                
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
-                        <h3 class="text-xl font-bold mb-4 border-b pb-2 text-yellow-700">
-                            Pesanan Menunggu Pembayaran (Online/Transfer) (<?php echo e($pendingOrders->count()); ?>)
-                        </h3>
+            
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    <h3 class="text-xl font-bold mb-4 border-b pb-2 text-yellow-700">
+                        Pesanan Menunggu Pembayaran (Online/Transfer) (<?php echo e($pendingOrders->count()); ?>)
+                    </h3>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left">No. Pesanan</th>
+                                <th class="px-6 py-3 text-left">Pelanggan</th> 
+                                <th class="px-6 py-3 text-right">Total</th>
+                                <th class="px-6 py-3 text-left">Tipe</th>
+                                <th class="px-6 py-3 text-center">Aksi Konfirmasi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
                             <?php $__empty_1 = true; $__currentLoopData = $pendingOrders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                                <tr>
-                                    <td class="px-6 py-4 font-medium">#<?php echo e($order->nomor_pesanan); ?></td>
-                                    <td class="px-6 py-4"><?php echo e($order->user->name ?? 'Kasir Input'); ?></td>
-                                    <td class="px-6 py-4">Rp <?php echo e(number_format($order->total_harga, 0, ',', '.')); ?></td>
+                            <tr class="hover:bg-yellow-50/50 transition duration-150">
+                                <td class="px-6 py-4 font-medium">#<?php echo e($order->nomor_pesanan); ?></td>
+                                <td class="px-6 py-4"><?php echo e($order->user->name ?? 'Pelanggan Online'); ?></td>
+                                <td class="px-6 py-4 text-right font-semibold">Rp <?php echo e(number_format($order->total_harga, 0, ',', '.')); ?></td>
+                                <td class="px-6 py-4"><?php echo e(ucfirst(str_replace('_', ' ', $order->tipe_pemesanan))); ?></td>
+                                
+                                <td class="px-6 py-4 text-center">
                                     
-                                    
-                                    <td class="px-6 py-4"><?php echo e($order->status_pembayaran); ?></td>
-                                    <td class="px-6 py-4"><?php echo e($order->tipe_pemesanan); ?></td>
-                                    
-                                    <td class="px-6 py-4 text-center">
-                                        
-                                        <form action="<?php echo e(route('kasir.orders.process', $order)); ?>" method="POST" onsubmit="return confirm('Apakah Anda yakin pesanan ini sudah dibayar dan siap diproses?');">
-                                            <?php echo csrf_field(); ?>
-                                            <?php echo method_field('PUT'); ?>
-                                            <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs">
-                                                ACC & Proses
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
+                                    <form action="<?php echo e(route('kasir.orders.process', $order)); ?>" method="POST" onsubmit="return confirm('Apakah Anda yakin pesanan ini sudah dibayar dan siap diproses?');">
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('PUT'); ?>
+                                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-xs shadow-md">
+                                            ACC & Proses
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                <p class="text-gray-500 col-span-3">Tidak ada pesanan menunggu pembayaran saat ini.</p>
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">Tidak ada pesanan menunggu pembayaran saat ini.</td>
+                                </tr>
                             <?php endif; ?>
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
+                    
+
                 </div>
+            </div>
 
                 
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">

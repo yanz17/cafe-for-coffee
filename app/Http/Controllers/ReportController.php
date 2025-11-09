@@ -39,29 +39,86 @@ class ReportController extends Controller
         // Ini adalah satu-satunya sumber data untuk view
         return view('manager.reports.dashboard-summary', compact('todaySales', 'criticalStockCount', 'recentOrders'));
     }
-    public function salesReport(Request $request)
+
+public function salesReport(Request $request)
     {
-        // 1. Ambil input filter tanggal
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        // 1. Input Slicing dan Roll-up
+        $startDate = $request->input('start_date', Carbon::now()->subMonths(1)->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        
+        $paymentMethod = $request->input('payment_method');
+        $orderType = $request->input('order_type');
+        $groupBy = $request->input('group_by', 'date'); // Dimensi Roll-up: date, category, method, menu
 
-        // 2. Query data pesanan yang sudah LUNAS
-        $sales = Order::where('status_pembayaran', 'lunas')
-                      ->whereDate('created_at', '>=', $startDate)
-                      ->whereDate('created_at', '<=', $endDate)
-                      ->orderBy('created_at', 'asc')
-                      ->get();
 
-        // 3. Hitung total summary
-        $summary = [
-            'total_penjualan' => $sales->sum('total_harga'),
-            'total_order' => $sales->count(),
-            'total_cash' => $sales->where('payment_method_final', 'Cash')->sum('total_harga'),
-            'total_qris' => $sales->where('payment_method_final', 'QRIS')->sum('total_harga'),
-            'total_transfer' => $sales->where('payment_method_final', 'Transfer')->sum('total_harga'),
-        ];
+        // Tentukan kolom SELECT dan GROUP BY mentah
+        $groupingColumnString = match ($groupBy) {
+            'category' => 'menus.kategori',
+            'method' => 'orders.payment_method_final',
+            'menu' => 'menus.nama', // BARU: Pengelompokan berdasarkan Nama Menu
+            default => 'DATE(orders.created_at)', 
+        };
+        
+        // Tentukan kolom yang akan menjadi label di hasil akhir
+        $labelColumn = match ($groupBy) {
+            'category' => 'menus.kategori',
+            'method' => 'orders.payment_method_final',
+            'menu' => 'menus.nama', // BARU: Label adalah Nama Menu
+            default => DB::raw('DATE(orders.created_at)'),
+        };
 
-        return view('manager.reports.sales-report', compact('sales', 'summary', 'startDate', 'endDate'));
+        // 2. Query Data Cube
+        $salesQuery = Order::query()
+            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+            ->join('menus', 'order_items.menu_id', '=', 'menus.id')
+            ->where('orders.status_pembayaran', 'lunas')
+            ->whereDate('orders.created_at', '>=', $startDate)
+            ->whereDate('orders.created_at', '<=', $endDate);
+
+        // 3. Logic Slicing (Filter)
+        if ($paymentMethod) {
+            $salesQuery->where('orders.payment_method_final', $paymentMethod);
+        }
+        if ($orderType) {
+            $salesQuery->where('orders.tipe_pemesanan', $orderType);
+        }
+
+        // 4. Logic Roll-up (Grouping) - Solusi untuk bug Expression
+        
+        // Pilih kolom SELECT berdasarkan grouping
+        if ($groupBy === 'date') {
+             // Jika group by date, kita perlu menggunakan DB::raw() untuk format tanggal
+             $salesQuery->select(DB::raw('DATE(orders.created_at) as label'));
+             $salesQuery->groupBy(DB::raw('DATE(orders.created_at)'));
+        } else {
+             // Jika group by category/method/menu (kolom string), kita bisa select langsung
+             // Note: Di sini kita menggunakan $groupingColumnString yang sudah dijamin string
+             $salesQuery->select($groupingColumnString . ' as label');
+             $salesQuery->groupBy($groupingColumnString);
+        }
+        
+        // Tambahkan agregasi
+        $salesQuery->addSelect(
+            DB::raw('SUM(orders.total_harga) as total_revenue'),
+            DB::raw('COUNT(orders.id) as total_orders')
+        );
+
+        $salesData = $salesQuery->get();
+        
+        // Data untuk Grafik (Extracting labels and data)
+        $chartLabels = $salesData->pluck('label');
+        $chartData = $salesData->pluck('total_revenue');
+
+        return view('manager.reports.sales-report', compact(
+            'salesData', 
+            'chartLabels', 
+            'chartData',
+            'startDate', 
+            'endDate', 
+            'paymentMethod', 
+            'orderType',
+            'groupBy'
+        ));
     }
     
     /**
