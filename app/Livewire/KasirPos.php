@@ -25,6 +25,8 @@ class KasirPos extends Component
     public $amountPaid = 0;
     public $changeDue = 0;
 
+    protected static string $layout = 'layouts.app'; 
+
     // Inisialisasi data saat komponen dimuat
     public function mount()
     {
@@ -40,9 +42,8 @@ class KasirPos extends Component
     // Load Menu dengan filter pencarian
     public function loadMenus()
     {
-        // KOREKSI KRITIS: Ganti 'true' dengan angka 1.
-        // Ini memastikan filter is_tersedia bekerja di SQLite/database lain.
-        $query = Menu::where('is_tersedia', 1); 
+        $query = Menu::where('is_tersedia', 1)
+                     ->with('bahanBaku');
 
         if ($this->search) {
             $query->where('nama', 'like', '%' . $this->search . '%');
@@ -57,21 +58,60 @@ class KasirPos extends Component
         $this->loadMenus();
     }
 
+    public function updatedCart($value, $key)
+    {
+        $parts = explode('.', $key);
+        $index = $parts[0];
+        
+        if (isset($parts[1]) && $parts[1] === 'kuantitas') {
+            $item = $this->cart[$index];
+            $maxStok = $item['max_stok']; 
+            $quantity = (int) $item['kuantitas'];
+            
+            // 1. Validasi Batas Stok
+            if ($quantity > $maxStok) {
+                 session()->flash('warning', "Kuantitas {$item['nama']} dibatasi hingga stok maksimum ({$maxStok}).");
+                 $quantity = $maxStok;
+                 $this->cart[$index]['kuantitas'] = $maxStok;
+            } elseif ($quantity < 1) {
+                 $quantity = 1;
+                 $this->cart[$index]['kuantitas'] = 1;
+            }
+
+            // 2. Perhitungan Subtotal
+            $this->cart[$index]['subtotal'] = $quantity * $item['harga_satuan'];
+            $this->resetPayment();
+        }
+    }
+
     // Method untuk menambahkan/mengupdate item ke keranjang
     public function addToCart(Menu $menu)
     {
         $index = collect($this->cart)->search(fn($item) => $item['menu_id'] === $menu->id);
+        $maxStok = $menu->max_stok; 
 
         if ($index !== false) {
+            if ($this->cart[$index]['kuantitas'] >= $maxStok) {
+                 session()->flash('error', "Gagal: Stok maksimum ({$maxStok}) untuk {$menu->nama} sudah tercapai.");
+                 return;
+            }
+            
             $this->cart[$index]['kuantitas']++;
-            $this->cart[$index]['subtotal'] = $this->cart[$index]['kuantitas'] * $menu->harga;
+            $this->cart[$index]['subtotal'] = $this->cart[$index]['kuantitas'] * $this->cart[$index]['harga_satuan'];
+            
         } else {
+            if ($maxStok <= 0) {
+                 session()->flash('error', "Gagal: {$menu->nama} saat ini tidak tersedia.");
+                 return;
+            }
+            
             $this->cart[] = [
                 'menu_id' => $menu->id,
                 'nama' => $menu->nama,
                 'harga_satuan' => $menu->harga,
                 'kuantitas' => 1,
                 'subtotal' => $menu->harga,
+                'max_stok' => $maxStok, 
             ];
         }
         $this->resetPayment(); 

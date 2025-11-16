@@ -14,16 +14,22 @@
             
             <div class="grid grid-cols-3 gap-4 overflow-y-auto flex-grow h-[75vh]">
                 <!--[if BLOCK]><![endif]--><?php $__empty_1 = true; $__currentLoopData = $menus; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $menu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                    <div wire:click="addToCart(<?php echo e($menu->id); ?>)"
-                        class="border p-3 rounded-lg cursor-pointer transition duration-150 
-                                <?php if($menu->is_tersedia): ?> hover:bg-indigo-50 <?php else: ?> bg-gray-100 opacity-60 cursor-not-allowed <?php endif; ?>"
-                        <?php if(!$menu->is_tersedia): ?> title="Menu tidak tersedia" <?php endif; ?>>
+                    <?php
+                        $maxStok = $menu->max_stok; // Akses Accessor
+                        $isAvailable = $maxStok > 0;
+                    ?>
+
+                    <div wire:click="<?php echo e($isAvailable ? 'addToCart('.$menu->id.')' : ''); ?>"
+                        class="border p-3 rounded-lg cursor-pointer transition duration-150 <?php echo e($isAvailable ? 'hover:bg-indigo-50' : 'opacity-60 cursor-not-allowed'); ?>">
                         <!--[if BLOCK]><![endif]--><?php if($menu->foto): ?>
                             <img src="<?php echo e(asset('storage/' . $menu->foto)); ?>" alt="<?php echo e($menu->nama); ?>" 
                                 class="w-full h-24 object-cover rounded mb-2"> 
                         <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                         <p class="font-bold text-gray-800"><?php echo e($menu->nama); ?></p>
                         <p class="text-xs text-gray-500"><?php echo e($menu->kategori); ?></p>
+                        <p class="text-xs font-semibold <?php echo e($isAvailable ? 'text-green-600' : 'text-red-600'); ?>">
+                            Stok: <?php echo e(number_format($maxStok)); ?> pcs tersedia
+                        </p>
                         <p class="text-md font-semibold text-indigo-600">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>
                     </div>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
@@ -42,11 +48,21 @@
                         <div class="w-1/2">
                             <p class="font-medium text-sm"><?php echo e($item['nama']); ?></p>
                         </div>
-                        <div class="flex items-center space-x-2 w-1/2 justify-end">
-                            
+                        <div class="flex items-center space-x-2 w-1/2 justify-end" wire:key="<?php echo e($item['menu_id']); ?>">
                             <input type="number" 
                                    wire:model.live.blur="cart.<?php echo e($index); ?>.kuantitas"
-                                   min="1" 
+                                   value="<?php echo e($item['kuantitas']); ?>"
+                                   min="1"
+                                   max="<?php echo e($item['max_stok']); ?>"
+                                   x-data="{ maxStok: <?php echo e($item['max_stok']); ?> }" 
+                                    x-on:input="
+                                        let val = parseInt($el.value);
+                                        if (val > maxStok) {
+                                            $el.value = maxStok; // Potong nilai di DOM
+                                            $el.dispatchEvent(new Event('change')); // Memicu update Livewire secara eksplisit
+                                            alert('Kuantitas maksimum ' + maxStok + ' sudah tercapai.');
+                                        }
+                                    "
                                    class="w-12 border-gray-300 rounded-md text-center p-1 text-sm">
                             <p class="font-semibold text-right w-16 text-sm">Rp <?php echo e(number_format($item['subtotal'], 0, ',', '.')); ?></p>
                             <button wire:click="removeItem(<?php echo e($index); ?>)" class="text-red-500 hover:text-red-700">×</button>

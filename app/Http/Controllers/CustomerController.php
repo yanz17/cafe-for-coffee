@@ -18,7 +18,13 @@ class CustomerController extends Controller
         // 1. Tampilkan Daftar Menu
     public function index()
     {
-        $menus = Menu::where('is_tersedia', 1)->orderBy('kategori')->orderBy('nama')->get();
+        $menus = Menu::where('is_tersedia', 1)
+                   // KOREKSI KRITIS: EAGER LOAD bahanBaku DAN pivot data
+                   ->with('bahanBaku') 
+                   ->orderBy('kategori')
+                   ->orderBy('nama')
+                   ->get();
+        
         $groupedMenus = $menus->groupBy('kategori');
         $recommendations = $this->getPersonalRecommendations();
 
@@ -59,10 +65,13 @@ class CustomerController extends Controller
             ->limit(5)
             ->pluck('order_items.menu_id');
 
-        $recommendedMenus = Menu::whereIn('id', $underperformingItems)
-                                        ->whereNotIn('id', $userTopItems) 
-                                        ->where('is_tersedia', 1)
-                                        ->get();
+        $recommendedMenus = Menu::with(['bahanBaku' => function($query) { // TAMBAHKAN EAGER LOADING
+            $query->select('bahan_bakus.id', 'stok_saat_ini');
+        }])
+                                 ->whereIn('id', $underperformingItems)
+                                 ->whereNotIn('id', $userTopItems) 
+                                 ->where('is_tersedia', 1)
+                                 ->get();
 
         if ($recommendedMenus->isEmpty()) {
              $recommendedMenus = Menu::whereIn('id', $underperformingItems)->where('is_tersedia', 1)->get();
@@ -84,7 +93,12 @@ class CustomerController extends Controller
 
         $items = json_decode($request->items, true);
         $menuIds = array_column($items, 'menu_id');
-        $menuCache = Menu::whereIn('id', $menuIds)->get()->keyBy('id');
+        $menuCache = Menu::with(['bahanBaku' => function($query) {
+                        $query->select('bahan_bakus.id', 'stok_saat_ini');
+                    }])
+                    ->whereIn('id', $menuIds)
+                    ->get()
+                    ->keyBy('id');
 
         DB::beginTransaction();
 
@@ -100,6 +114,15 @@ class CustomerController extends Controller
                 if (!isset($menuCache[$menuId])) { throw new \Exception("Menu ID #{$menuId} tidak valid."); }
                 
                 $menu = $menuCache[$menuId];
+
+                $stokTersedia = $menu->calculateStokMenu();
+                if ($kuantitas > $stokTersedia) {
+                    throw new \Exception("Stok {$menu->nama} hanya tersedia {$stokTersedia}. Permintaan {$kuantitas} tidak dapat diproses.");
+                }
+                if ($stokTersedia === 0) {
+                    throw new \Exception("Stok {$menu->nama} sudah habis.");
+                }
+
                 $hargaSatuan = $menu->harga;
                 $subtotal = $kuantitas * $hargaSatuan;
                 $totalHarga += $subtotal;
@@ -179,7 +202,17 @@ class CustomerController extends Controller
             ]);
 
             // 4. Buat Order Items
-            foreach ($orderItems as $item) { $order->items()->create($item); }
+            foreach ($orderItems as $item) {
+                $menu = $menuCache[$item['menu_id']];
+                $kuantitasOrder = $item['kuantitas'];
+
+                foreach ($menu->bahanBaku as $bahan) {
+                    $kuantitasDigunakan = $bahan->pivot->kuantitas_digunakan * $kuantitasOrder;
+                    // Kurangi stok
+                    $bahan->stok_saat_ini -= $kuantitasDigunakan;
+                    $bahan->save(); // Simpan perubahan stok
+                }
+            }
 
             DB::commit();
             

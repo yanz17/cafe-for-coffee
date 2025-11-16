@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('header'); ?>
     <h2 class="font-semibold text-xl text-gray-800 leading-tight">
         <?php echo e(__('Menu Cafe For Coffee')); ?>
@@ -69,12 +67,14 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <?php $__currentLoopData = $menus; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $menu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <?php
-                                    $safeMenuName = strtolower($menu->nama); 
+                                    $safeName = json_encode($menu->nama);
+                                    $maxStok = $menu->max_stok;
+                                    $isAvailable = $maxStok > 0;
                                 ?>
 
                                 
-                                <div x-show="isMenuVisible('<?php echo e($safeMenuName); ?>', searchTerm)" 
-                                     @click="addItem(<?php echo e($menu->id); ?>, '<?php echo e($menu->nama); ?>', <?php echo e($menu->harga); ?>)"
+                                <div x-show="isMenuVisible('<?php echo e($safeName); ?>', searchTerm)" 
+                                     @click="<?php echo e($isAvailable ? 'addItem('. $menu->id .', ' . $safeName . ', '. $menu->harga .', '. $maxStok .')' : 'alert(\'Mohon maaf, stok sudah habis.\')'); ?>"
                                      class="border p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150 flex justify-between items-center space-x-3">
                                     
                                     <div class="flex items-center space-x-3 flex-grow">
@@ -85,6 +85,9 @@
                                         <div>
                                             <p class="font-bold text-lg text-gray-800"><?php echo e($menu->nama); ?></p>
                                             <p class="text-sm text-gray-500"><?php echo e($menu->kategori); ?></p>
+                                            <p class="text-xs font-semibold <?php echo e($isAvailable ? 'text-green-600' : 'text-red-600'); ?>">
+                                                Stok: <?php echo e(number_format($maxStok)); ?> pcs tersedia
+                                            </p>
                                         </div>
                                     </div>
                                     <p class="text-xl font-semibold text-indigo-600 flex-shrink-0">Rp <?php echo e(number_format($menu->harga, 0, ',', '.')); ?></p>
@@ -128,7 +131,9 @@
                             <div class="flex justify-between items-center border-b py-2">
                                 <p class="text-sm w-1/2" x-text="item.nama"></p>
                                 <input type="number" x-model.number="item.kuantitas" @input="updateSubtotal(index)" 
-                                    min="1" class="w-16 border-gray-300 rounded-md text-center p-1">
+                                    min="1" 
+                                    :max="item.stok"
+                                    class="w-16 border-gray-300 rounded-md text-center p-1">
                                 <p class="font-semibold text-sm w-1/4 text-right" x-text="formatRupiah(item.subtotal)"></p>
                                 <button @click="removeItem(index)" type="button" class="text-red-500 hover:text-red-700 ml-2">×</button>
                             </div>
@@ -200,8 +205,18 @@
                 },
 
                 updateSubtotal(index) {
-                    this.cart[index].subtotal = this.cart[index].kuantitas * this.cart[index].harga_satuan;
-                    this.cart = [...this.cart]; 
+                    let item = this.cart[index];
+                    if (item.kuantitas > item.stok) {
+                        item.kuantitas = item.stok; // Batasi ke stok maksimum
+                        // Opsional: tampilkan notifikasi jika ini terjadi
+                        alert(`Kuantitas untuk ${item.nama} telah dibatasi sesuai stok: ${item.stok}`);
+                    }
+                    if (item.kuantitas < 1) {
+                        item.kuantitas = 1; // Batasi ke minimum 1
+                    }
+
+                    item.subtotal = item.kuantitas * item.harga_satuan;
+                    this.cart = [...this.cart];
                 },
 
                 removeItem(index) {
@@ -209,10 +224,20 @@
                     this.cart = [...this.cart]; 
                 },
                 
-                addItem(menu_id, nama, harga) {
+                addItem(menu_id, nama, harga, stok) {
+                    if (stok <= 0) {
+                        alert(`Maaf, stok ${nama} sudah habis.`);
+                        return; // Jangan tambahkan jika stok 0
+                    }
+
                     let existingItem = this.cart.find(item => item.menu_id === menu_id);
 
                     if (existingItem) {
+                        // Cek Stok untuk penambahan
+                        if (existingItem.kuantitas >= stok) {
+                            alert(`Gagal menambahkan! Stok ${nama} tersisa hanya ${stok}.`);
+                            return; // Jangan tambahkan jika sudah mencapai batas stok
+                        }
                         existingItem.kuantitas++;
                         existingItem.subtotal = existingItem.kuantitas * existingItem.harga_satuan;
                     } else {
@@ -222,6 +247,7 @@
                             harga_satuan: harga,
                             kuantitas: 1,
                             subtotal: harga,
+                            stok: stok, // TAMBAHKAN PROPERTI STOK
                         });
                     }
                     this.cart = [...this.cart];

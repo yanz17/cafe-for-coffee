@@ -14,16 +14,22 @@
             {{-- Grid Menu --}}
             <div class="grid grid-cols-3 gap-4 overflow-y-auto flex-grow h-[75vh]">
                 @forelse ($menus as $menu)
-                    <div wire:click="addToCart({{ $menu->id }})"
-                        class="border p-3 rounded-lg cursor-pointer transition duration-150 
-                                @if ($menu->is_tersedia) hover:bg-indigo-50 @else bg-gray-100 opacity-60 cursor-not-allowed @endif"
-                        @if (!$menu->is_tersedia) title="Menu tidak tersedia" @endif>
+                    @php
+                        $maxStok = $menu->max_stok; // Akses Accessor
+                        $isAvailable = $maxStok > 0;
+                    @endphp
+
+                    <div wire:click="{{ $isAvailable ? 'addToCart('.$menu->id.')' : '' }}"
+                        class="border p-3 rounded-lg cursor-pointer transition duration-150 {{ $isAvailable ? 'hover:bg-indigo-50' : 'opacity-60 cursor-not-allowed' }}">
                         @if ($menu->foto)
                             <img src="{{ asset('storage/' . $menu->foto) }}" alt="{{ $menu->nama }}" 
                                 class="w-full h-24 object-cover rounded mb-2"> {{-- UKURAN BARU: h-24 --}}
                         @endif
                         <p class="font-bold text-gray-800">{{ $menu->nama }}</p>
                         <p class="text-xs text-gray-500">{{ $menu->kategori }}</p>
+                        <p class="text-xs font-semibold {{ $isAvailable ? 'text-green-600' : 'text-red-600' }}">
+                            Stok: {{ number_format($maxStok) }} pcs tersedia
+                        </p>
                         <p class="text-md font-semibold text-indigo-600">Rp {{ number_format($menu->harga, 0, ',', '.') }}</p>
                     </div>
                 @empty
@@ -42,11 +48,21 @@
                         <div class="w-1/2">
                             <p class="font-medium text-sm">{{ $item['nama'] }}</p>
                         </div>
-                        <div class="flex items-center space-x-2 w-1/2 justify-end">
-                            {{-- Gunakan wire:model.blur untuk update saat fokus hilang --}}
+                        <div class="flex items-center space-x-2 w-1/2 justify-end" wire:key="{{ $item['menu_id'] }}">
                             <input type="number" 
                                    wire:model.live.blur="cart.{{ $index }}.kuantitas"
-                                   min="1" 
+                                   value="{{ $item['kuantitas'] }}"
+                                   min="1"
+                                   max="{{ $item['max_stok'] }}"
+                                   x-data="{ maxStok: {{ $item['max_stok'] }} }" 
+                                    x-on:input="
+                                        let val = parseInt($el.value);
+                                        if (val > maxStok) {
+                                            $el.value = maxStok; // Potong nilai di DOM
+                                            $el.dispatchEvent(new Event('change')); // Memicu update Livewire secara eksplisit
+                                            alert('Kuantitas maksimum ' + maxStok + ' sudah tercapai.');
+                                        }
+                                    "
                                    class="w-12 border-gray-300 rounded-md text-center p-1 text-sm">
                             <p class="font-semibold text-right w-16 text-sm">Rp {{ number_format($item['subtotal'], 0, ',', '.') }}</p>
                             <button wire:click="removeItem({{ $index }})" class="text-red-500 hover:text-red-700">×</button>
