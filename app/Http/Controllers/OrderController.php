@@ -106,10 +106,13 @@ class OrderController extends Controller
                 $order->items()->create($item);
             }
 
+            $invoiceUrl = route('kasir.orders.invoice', $order);
+
             DB::commit();
 
             return redirect()->route('kasir.orders.index')
-                            ->with('success', 'Pesanan #' . $order->nomor_pesanan . ' berhasil dibuat. Lanjutkan ke Pembayaran.');
+                            ->with('success', 'Pesanan #' . $order->nomor_pesanan . ' berhasil dibuat. Lanjutkan ke Pembayaran.')
+                            ->with('print_invoice_url', $invoiceUrl);;
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -166,8 +169,8 @@ class OrderController extends Controller
             DB::commit();
             
             // KOREKSI A (RETURN SUKSES): Redirect ke Invoice
-            return redirect()->route('kasir.orders.invoice', $order)
-                            ->with('success', 'Pesanan selesai. Struk siap dicetak.');
+            return redirect()->back()
+                            ->with('success', 'Pesanan ' . $order->nomor_pesanan. ' selesai.');
 
         } catch (\Exception $e) {
             DB::rollBack();
