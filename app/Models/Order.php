@@ -58,7 +58,6 @@ class Order extends Model
 
                 // Lakukan pengurangan stok
                 BahanBaku::where('id', $bahanBaku->id)->update([
-                    // Gunakan DB::raw untuk menghindari masalah race condition saat update stok
                     'stok_saat_ini' => DB::raw("stok_saat_ini - $deductionAmount")
                 ]);
             }

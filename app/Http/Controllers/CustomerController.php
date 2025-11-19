@@ -115,7 +115,7 @@ class CustomerController extends Controller
                 
                 $menu = $menuCache[$menuId];
 
-                $stokTersedia = $menu->calculateStokMenu();
+                $stokTersedia = $menu->max_stok;
                 if ($kuantitas > $stokTersedia) {
                     throw new \Exception("Stok {$menu->nama} hanya tersedia {$stokTersedia}. Permintaan {$kuantitas} tidak dapat diproses.");
                 }

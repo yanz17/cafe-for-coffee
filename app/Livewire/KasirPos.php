@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Models\Menu;
 use App\Models\Order;
+use App\Models\BahanBaku;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -27,7 +28,6 @@ class KasirPos extends Component
 
     protected static string $layout = 'layouts.app'; 
 
-    // Inisialisasi data saat komponen dimuat
     public function mount()
     {
         $this->loadMenus();
@@ -42,6 +42,7 @@ class KasirPos extends Component
     // Load Menu dengan filter pencarian
     public function loadMenus()
     {
+        // Eager load bahanBaku agar Accessor max_stok berfungsi
         $query = Menu::where('is_tersedia', 1)
                      ->with('bahanBaku');
 
@@ -57,7 +58,8 @@ class KasirPos extends Component
     {
         $this->loadMenus();
     }
-
+    
+    // Hook hanya menangani input manual (typing)
     public function updatedCart($value, $key)
     {
         $parts = explode('.', $key);
@@ -84,9 +86,40 @@ class KasirPos extends Component
         }
     }
 
-    // Method untuk menambahkan/mengupdate item ke keranjang
+    // KOREKSI B: Method untuk kontrol kuantitas (+/-)
+    public function increaseQuantity($index)
+    {
+        $item = $this->cart[$index];
+        $maxStok = $item['max_stok'];
+
+        if ($item['kuantitas'] < $maxStok) {
+            $this->cart[$index]['kuantitas']++;
+            // Hitung subtotal secara eksplisit agar re-render berjalan
+            $this->cart[$index]['subtotal'] = $this->cart[$index]['kuantitas'] * $item['harga_satuan'];
+        } else {
+            session()->flash('warning', "Stok maksimum ({$maxStok}) sudah tercapai.");
+        }
+        $this->resetPayment();
+    }
+
+    public function decreaseQuantity($index)
+    {
+        $item = $this->cart[$index];
+        if ($item['kuantitas'] > 1) {
+            $this->cart[$index]['kuantitas']--;
+            // Hitung subtotal secara eksplisit agar re-render berjalan
+            $this->cart[$index]['subtotal'] = $this->cart[$index]['kuantitas'] * $item['harga_satuan'];
+        } else {
+            $this->removeItem($index);
+        }
+        $this->resetPayment();
+    }
+
+
+    // HOOK: Dijalankan saat tombol card menu diklik
     public function addToCart(Menu $menu)
     {
+        // PANGGILAN STOK DENGAN ACCESSOR YANG BENAR: $menu->max_stok
         $index = collect($this->cart)->search(fn($item) => $item['menu_id'] === $menu->id);
         $maxStok = $menu->max_stok; 
 
@@ -117,12 +150,6 @@ class KasirPos extends Component
         $this->resetPayment(); 
     }
     
-    // Method untuk menghitung kembalian saat amountPaid diinput
-    public function updatedAmountPaid()
-    {
-        $this->changeDue = (int)$this->amountPaid - $this->getTotalProperty();
-    }
-
     // Method untuk menghapus item
     public function removeItem($index)
     {
@@ -141,13 +168,6 @@ class KasirPos extends Component
     // Method utama untuk menyimpan pesanan
     public function storeOrder()
     {
-        // ... (Logic storeOrder Anda yang sudah benar dan lengkap) ...
-        // ... (Kode penyimpanan Order dan Order Items tetap sama) ...
-        
-        // Asumsikan kode penyimpanan di atas sudah dipindahkan ke sini.
-        // Jika kode di atas sudah benar, maka:
-
-        // 2. Validasi input pembayaran
         $total = $this->getTotalProperty();
         $this->validate([
             'amountPaid' => 'required|numeric|min:' . $total,
@@ -182,14 +202,13 @@ class KasirPos extends Component
                 ]);
             }
             
+            // LOGIKA PENGURANGAN STOK DI MODEL ORDER
             $order->deductStock(); 
             
             DB::commit();
             
-            // 1. DISPATCH EVENT untuk membuka INVOICE di tab baru
             $this->dispatch('open-invoice-tab', $order->id);
 
-            // 2. Beri pesan sukses & Reset state Livewire
             session()->flash('success', 'Transaksi berhasil diproses. Struk siap dicetak. Kembalian: Rp ' . number_format($this->changeDue, 0, ',', '.') . '.');
             $this->reset(['cart', 'amountPaid', 'changeDue', 'meja']);
             
@@ -202,17 +221,12 @@ class KasirPos extends Component
     // KOREKSI: Tambahkan method render() yang diperlukan Livewire Page Component
     public function render()
     {
-        // Eager load data menus di sini untuk memastikan ketersediaan data di view
         $this->loadMenus(); 
-        
-        // Kita buat view header terpisah untuk dimasukkan ke @section('header')
-        // Asumsi: View header berada di resources/views/kasir/pos/header-content.blade.php
         $headerContent = view('kasir.pos.header-content'); 
         
-        // KOREKSI FINAL: Menggunakan chain call extends/section
         return view('livewire.kasir-pos')
             ->extends('layouts.app')
-            ->section('header', $headerContent) // Menyuntikkan judul
-            ->section('content'); // Menyuntikkan konten POS ke main body
+            ->section('header', $headerContent)
+            ->section('content');
     }
 }
