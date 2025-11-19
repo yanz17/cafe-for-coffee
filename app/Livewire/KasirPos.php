@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 class KasirPos extends Component
 {
-
     // State Aplikasi
     public $menus = [];
     public $search = '';
@@ -24,22 +23,40 @@ class KasirPos extends Component
     // State Pembayaran
     public $paymentMethod = 'Cash';
     public $amountPaid = 0;
-    public $changeDue = 0;
+    public $changeDue = 0; // Properti untuk menampung nilai kembalian
 
     protected static string $layout = 'layouts.app'; 
 
     public function mount()
     {
         $this->loadMenus();
+        // Hitung kembalian awal saat mount (akan 0 karena amountPaid=0 dan total=0)
+        $this->updatedAmountPaid($this->amountPaid); 
     }
 
-    // Properti terkomputasi (Computed Property) untuk menghitung Total Harga secara real-time
     public function getTotalProperty()
     {
         return array_sum(array_column($this->cart, 'subtotal'));
     }
 
-    // Load Menu dengan filter pencarian
+    /**
+     * HOOK PENTING: Dijalankan setiap kali $amountPaid diubah (oleh wire:model.live)
+     */
+    public function updatedAmountPaid($value)
+    {
+        $amount = (int) $value;
+        $total = $this->getTotalProperty();
+        
+        // Pastikan amountPaid tidak negatif
+        if ($amount < 0) {
+            $amount = 0;
+            $this->amountPaid = 0; // Reset state jika input negatif
+        }
+
+        // Hitung Kembalian
+        $this->changeDue = $amount - $total;
+    }
+
     public function loadMenus()
     {
         // Eager load bahanBaku agar Accessor max_stok berfungsi
@@ -53,13 +70,11 @@ class KasirPos extends Component
         $this->menus = $query->get();
     }
     
-    // Dipanggil saat input search berubah (wire:model.live)
     public function updatedSearch()
     {
         $this->loadMenus();
     }
     
-    // Hook hanya menangani input manual (typing)
     public function updatedCart($value, $key)
     {
         $parts = explode('.', $key);
@@ -82,11 +97,12 @@ class KasirPos extends Component
 
             // 2. Perhitungan Subtotal
             $this->cart[$index]['subtotal'] = $quantity * $item['harga_satuan'];
-            $this->resetPayment();
+            
+            // PENTING: Hitung ulang kembalian setelah total berubah
+            $this->updatedAmountPaid($this->amountPaid);
         }
     }
 
-    // KOREKSI B: Method untuk kontrol kuantitas (+/-)
     public function increaseQuantity($index)
     {
         $item = $this->cart[$index];
@@ -94,12 +110,11 @@ class KasirPos extends Component
 
         if ($item['kuantitas'] < $maxStok) {
             $this->cart[$index]['kuantitas']++;
-            // Hitung subtotal secara eksplisit agar re-render berjalan
             $this->cart[$index]['subtotal'] = $this->cart[$index]['kuantitas'] * $item['harga_satuan'];
         } else {
             session()->flash('warning', "Stok maksimum ({$maxStok}) sudah tercapai.");
         }
-        $this->resetPayment();
+        $this->updatedAmountPaid($this->amountPaid); // Hitung ulang kembalian
     }
 
     public function decreaseQuantity($index)
@@ -107,19 +122,15 @@ class KasirPos extends Component
         $item = $this->cart[$index];
         if ($item['kuantitas'] > 1) {
             $this->cart[$index]['kuantitas']--;
-            // Hitung subtotal secara eksplisit agar re-render berjalan
             $this->cart[$index]['subtotal'] = $this->cart[$index]['kuantitas'] * $item['harga_satuan'];
         } else {
             $this->removeItem($index);
         }
-        $this->resetPayment();
+        $this->updatedAmountPaid($this->amountPaid); // Hitung ulang kembalian
     }
 
-
-    // HOOK: Dijalankan saat tombol card menu diklik
     public function addToCart(Menu $menu)
     {
-        // PANGGILAN STOK DENGAN ACCESSOR YANG BENAR: $menu->max_stok
         $index = collect($this->cart)->search(fn($item) => $item['menu_id'] === $menu->id);
         $maxStok = $menu->max_stok; 
 
@@ -147,15 +158,14 @@ class KasirPos extends Component
                 'max_stok' => $maxStok, 
             ];
         }
-        $this->resetPayment(); 
+        $this->updatedAmountPaid($this->amountPaid); // Hitung ulang kembalian
     }
     
-    // Method untuk menghapus item
     public function removeItem($index)
     {
         unset($this->cart[$index]);
         $this->cart = array_values($this->cart);
-        $this->resetPayment();
+        $this->updatedAmountPaid($this->amountPaid); // Hitung ulang kembalian
     }
     
     // Method untuk mereset state pembayaran
@@ -170,7 +180,8 @@ class KasirPos extends Component
     {
         $total = $this->getTotalProperty();
         $this->validate([
-            'amountPaid' => 'required|numeric|min:' . $total,
+            // Validasi di sisi server harus menggunakan total yang terbaru
+            'amountPaid' => 'required|numeric|min:' . $total, 
             'paymentMethod' => 'required|string',
             'orderType' => 'required|in:dine_in,take_away',
             'meja' => 'nullable|string|max:10',
@@ -202,7 +213,7 @@ class KasirPos extends Component
                 ]);
             }
             
-            // LOGIKA PENGURANGAN STOK DI MODEL ORDER
+            // Panggil fungsi pengurangan stok (dianggap ada di Model Order)
             $order->deductStock(); 
             
             DB::commit();
@@ -210,7 +221,12 @@ class KasirPos extends Component
             $this->dispatch('open-invoice-tab', $order->id);
 
             session()->flash('success', 'Transaksi berhasil diproses. Struk siap dicetak. Kembalian: Rp ' . number_format($this->changeDue, 0, ',', '.') . '.');
-            $this->reset(['cart', 'amountPaid', 'changeDue', 'meja']);
+            
+            // JANGAN gunakan $this->reset() karena akan mereset $menus juga.
+            $this->cart = []; 
+            $this->amountPaid = 0;
+            $this->changeDue = 0;
+            $this->meja = null; 
             
         } catch (\Exception $e) {
             DB::rollBack();
@@ -218,9 +234,9 @@ class KasirPos extends Component
         }
     }
 
-    // KOREKSI: Tambahkan method render() yang diperlukan Livewire Page Component
     public function render()
     {
+        // Panggil loadMenus di sini untuk memastikan $menus selalu terisi saat render
         $this->loadMenus(); 
         $headerContent = view('kasir.pos.header-content'); 
         

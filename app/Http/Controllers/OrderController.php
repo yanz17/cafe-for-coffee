@@ -112,7 +112,7 @@ class OrderController extends Controller
 
             return redirect()->route('kasir.orders.index')
                             ->with('success', 'Pesanan #' . $order->nomor_pesanan . ' berhasil dibuat. Lanjutkan ke Pembayaran.')
-                            ->with('print_invoice_url', $invoiceUrl);;
+                            ->with('print_invoice_url', $invoiceUrl);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -134,6 +134,8 @@ class OrderController extends Controller
 
         $amountPaid = (int) $request->amount_paid;
         $changeDue = $amountPaid - $order->total_harga; // Hitung kembalian
+        $invoiceUrl = route('kasir.orders.invoice', $order);
+
 
         $order->update([
             'status_pembayaran' => 'lunas',
@@ -144,8 +146,8 @@ class OrderController extends Controller
         ]);
 
         return back()->with('success', 
-            'Pembayaran #' . $order->nomor_pesanan . ' LUNAS (' . $request->payment_method_final . '). Kembalian: Rp ' . number_format($changeDue, 0, ',', '.')
-        );
+            'Pembayaran #' . $order->nomor_pesanan . ' LUNAS (' . $request->payment_method_final . '). Kembalian: Rp ' . number_format($changeDue, 0, ',', '.'))
+                    ->with('print_invoice_url', $invoiceUrl);
     }
 
     public function completeOrder(Order $order)
