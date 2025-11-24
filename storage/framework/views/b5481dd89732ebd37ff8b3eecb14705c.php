@@ -51,7 +51,6 @@
                         <div class="flex items-center space-x-2 w-1/2 justify-end" wire:key="<?php echo e($item['menu_id']); ?>">
                             <input type="number" 
                                    wire:model.live.blur="cart.<?php echo e($index); ?>.kuantitas"
-                                   value="<?php echo e($item['kuantitas']); ?>"
                                    min="1"
                                    max="<?php echo e($item['max_stok']); ?>"
                                    x-data="{ maxStok: <?php echo e($item['max_stok']); ?> }" 

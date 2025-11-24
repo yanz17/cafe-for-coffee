@@ -51,7 +51,6 @@
                         <div class="flex items-center space-x-2 w-1/2 justify-end" wire:key="{{ $item['menu_id'] }}">
                             <input type="number" 
                                    wire:model.live.blur="cart.{{ $index }}.kuantitas"
-                                   value="{{ $item['kuantitas'] }}"
                                    min="1"
                                    max="{{ $item['max_stok'] }}"
                                    x-data="{ maxStok: {{ $item['max_stok'] }} }" 
