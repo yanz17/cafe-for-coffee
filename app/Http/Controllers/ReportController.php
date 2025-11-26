@@ -40,7 +40,7 @@ class ReportController extends Controller
         return view('manager.reports.dashboard-summary', compact('todaySales', 'criticalStockCount', 'recentOrders'));
     }
 
-public function salesReport(Request $request)
+    public function salesReport(Request $request)
     {
         // 1. Input Slicing dan Roll-up
         $startDate = $request->input('start_date', Carbon::now()->subMonths(1)->toDateString());
@@ -48,30 +48,34 @@ public function salesReport(Request $request)
         
         $paymentMethod = $request->input('payment_method');
         $orderType = $request->input('order_type');
-        $groupBy = $request->input('group_by', 'date'); // Dimensi Roll-up: date, category, method, menu
+        $groupBy = $request->input('group_by', 'date');
 
 
-        // Tentukan kolom SELECT dan GROUP BY mentah
-        $groupingColumnString = match ($groupBy) {
+        // Tentukan kolom yang akan digunakan untuk SELECT dan GROUP BY
+        $groupingField = match ($groupBy) {
             'category' => 'menus.kategori',
             'method' => 'orders.payment_method_final',
-            'menu' => 'menus.nama', // BARU: Pengelompokan berdasarkan Nama Menu
-            default => 'DATE(orders.created_at)', 
-        };
-        
-        // Tentukan kolom yang akan menjadi label di hasil akhir
-        $labelColumn = match ($groupBy) {
-            'category' => 'menus.kategori',
-            'method' => 'orders.payment_method_final',
-            'menu' => 'menus.nama', // BARU: Label adalah Nama Menu
+            'menu' => 'menus.nama',
             default => DB::raw('DATE(orders.created_at)'),
         };
 
+        // Tentukan SELECT statement (selalu gunakan alias 'label')
+        $selectLabel = match ($groupBy) {
+            'category' => 'menus.kategori as label',
+            'method' => 'orders.payment_method_final as label',
+            'menu' => 'menus.nama as label',
+            default => DB::raw('DATE(orders.created_at) as label'),
+        };
+
+
         // 2. Query Data Cube
         $salesQuery = Order::query()
-            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-            ->join('menus', 'order_items.menu_id', '=', 'menus.id')
-            ->where('orders.status_pembayaran', 'lunas')
+            // KOREKSI KRITIS: Menggunakan LEFT JOIN agar data order tidak hilang
+            // jika ada item_id yang rusak atau tidak valid (walaupun seharusnya tidak)
+            ->leftJoin('order_items', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('menus', 'order_items.menu_id', '=', 'menus.id') 
+            
+            ->where('orders.status_pembayaran', 'lunas') // Filter Lunas
             ->whereDate('orders.created_at', '>=', $startDate)
             ->whereDate('orders.created_at', '<=', $endDate);
 
@@ -83,31 +87,31 @@ public function salesReport(Request $request)
             $salesQuery->where('orders.tipe_pemesanan', $orderType);
         }
 
-        // 4. Logic Roll-up (Grouping) - Solusi untuk bug Expression
+        // 4. Logic Roll-up (Grouping)
         
-        // Pilih kolom SELECT berdasarkan grouping
-        if ($groupBy === 'date') {
-             // Jika group by date, kita perlu menggunakan DB::raw() untuk format tanggal
-             $salesQuery->select(DB::raw('DATE(orders.created_at) as label'));
-             $salesQuery->groupBy(DB::raw('DATE(orders.created_at)'));
-        } else {
-             // Jika group by category/method/menu (kolom string), kita bisa select langsung
-             // Note: Di sini kita menggunakan $groupingColumnString yang sudah dijamin string
-             $salesQuery->select($groupingColumnString . ' as label');
-             $salesQuery->groupBy($groupingColumnString);
-        }
-        
-        // Tambahkan agregasi
-        $salesQuery->addSelect(
+        // Select kolom label dan agregasi
+        $salesQuery->select(
             DB::raw('SUM(orders.total_harga) as total_revenue'),
             DB::raw('COUNT(orders.id) as total_orders')
         );
+        $salesQuery->addSelect($selectLabel);
 
+
+        // Grouping
+        if ($groupBy === 'date') {
+             $salesQuery->groupBy(DB::raw('DATE(orders.created_at)'));
+        } else {
+             $salesQuery->groupBy($groupingField);
+        }
+        
         $salesData = $salesQuery->get();
         
         // Data untuk Grafik (Extracting labels and data)
         $chartLabels = $salesData->pluck('label');
         $chartData = $salesData->pluck('total_revenue');
+
+        // Ambil stok kritis untuk dashboard card
+        $criticalStockCount = BahanBaku::whereColumn('stok_saat_ini', '<=', 'stok_minimal')->count();
 
         return view('manager.reports.sales-report', compact(
             'salesData', 
@@ -117,7 +121,8 @@ public function salesReport(Request $request)
             'endDate', 
             'paymentMethod', 
             'orderType',
-            'groupBy'
+            'groupBy',
+            'criticalStockCount' 
         ));
     }
     
