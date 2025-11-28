@@ -84,6 +84,12 @@
                                     <span class="ml-3">Umpan Balik Pelanggan</span>
                                 </a>
                             </li>
+                                                        <li class="pt-2 border-t mt-2">
+                                <a href="<?php echo e(route('manager.reports.feedback')); ?>" class="text-sm text-pink-600 hover:text-pink-800 font-bold flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.222a1 1 0 01.902 0l1.83 1.11a1 1 0 001.272.062l2.128-1.428a1 1 0 011.233.722l.147 2.378a1 1 0 00.781.82l2.378.147a1 1 0 01.722 1.233l-1.428 2.128a1 1 0 00.062 1.272l1.11 1.83a1 1 0 010 .902l-1.11 1.83a1 1 0 00-.062 1.272l1.428 2.128a1 1 0 01-.722 1.233l-2.378.147a1 1 0 00-.82.781l-.147 2.378a1 1 0 01-1.233.722l-2.128-1.428a1 1 0 00-1.272.062l-1.83 1.11a1 1 0 01-.902 0l-1.83-1.11a1 1 0 00-1.272-.062l-2.128 1.428a1 1 0 01-1.233-.722l-.147-2.378a1 1 0 00-.781-.82l-2.378-.147a1 1 0 01-.722-1.233l1.428-2.128a1 1 0 00-.062-1.272l-1.11-1.83a1 1 0 010-.902l1.11-1.83a1 1 0 00.062-1.272l-1.428-2.128a1 1 0 01.722-1.233l2.378-.147a1 1 0 00.82-.781l.147-2.378a1 1 0 011.233-.722l2.128 1.428a1 1 0 001.272-.062zM10 13a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                                    Umpan Balik Pelanggan &rarr;
+                                </a>
+                            </li>
                          </ul>
                     </div>
                 </div>

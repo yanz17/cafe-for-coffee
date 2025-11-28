@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\OrderItem;
 use App\Models\Menu;
+use App\Models\Feedback;
 
 class ReportController extends Controller
 {
@@ -308,6 +309,60 @@ class ReportController extends Controller
             'categorySummary',
             'startDate', 
             'endDate'
+        ));
+    }
+
+    public function allFeedback(Request $request)
+    {
+        // 1. Input Filter
+        $startDate = $request->input('start_date', Carbon::now()->subMonths(1)->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->toDateString());
+        $ratingFilter = $request->input('rating_filter'); // Filter 1, 2, 3, 4, 5
+
+        // Query dasar
+        $baseQuery = Feedback::query()
+                             ->whereDate('created_at', '>=', $startDate)
+                             ->whereDate('created_at', '<=', $endDate);
+
+        // Filter Rating
+        if ($ratingFilter) {
+            $baseQuery->where('rating', $ratingFilter);
+        }
+        
+        // 2. Ambil semua feedback (paginasi untuk tabel detail)
+        $feedbacks = (clone $baseQuery)->with(['user', 'order'])
+                             ->orderBy('created_at', 'desc')
+                             ->paginate(10)
+                             ->withQueryString(); // Memastikan filter tetap ada saat pindah halaman
+                             
+        // 3. Ambil semua rating untuk agregasi (gunakan base query untuk konsistensi)
+        $allRatings = (clone $baseQuery)->select('rating')->get();
+        
+        // 4. Agregasi Data Chart
+        $totalFeedback = $allRatings->count();
+        $averageRating = $allRatings->avg('rating');
+        
+        // Hitung frekuensi per rating (1 hingga 5)
+        $ratingCounts = $allRatings->groupBy('rating')->map->count();
+        
+        $chartData = [];
+        $chartLabels = [];
+        
+        for ($i = 1; $i <= 5; $i++) {
+            $count = $ratingCounts->get($i) ?? 0;
+            $chartLabels[] = "{$i} Bintang";
+            $chartData[] = $count;
+        }
+
+        return view('manager.reports.all_feedback', compact(
+            'feedbacks', 
+            'averageRating', 
+            'totalFeedback', 
+            'chartLabels', 
+            'chartData',
+            'startDate',    // Kirim kembali variabel filter
+            'endDate',      // Kirim kembali variabel filter
+            'ratingFilter'  // Kirim kembali variabel filter
         ));
     }
 }

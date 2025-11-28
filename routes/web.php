@@ -91,6 +91,7 @@ Route::prefix('manager')->middleware(['auth', 'role:'. User::ROLE_MANAGER])->gro
         Route::get('charts', [ReportController::class, 'salesChartData'])->name('charts');
         Route::get('customers', [ReportController::class, 'customerSegmentation'])->name('customers');
         Route::get('recommendations', [ReportController::class, 'productRecommendations'])->name('recommendations');
+        Route::get('reports/feedback', [ReportController::class, 'allFeedback'])->name('feedback');
     });
 
     // 7. KELOLA FEEDBACK PELANGGAN
