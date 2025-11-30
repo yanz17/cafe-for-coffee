@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('header'); ?>
     <h2 class="font-semibold text-xl text-gray-800 leading-tight">
         <?php echo e(__('Laporan Penjualan OLAP & Visualisasi')); ?>
@@ -54,6 +52,47 @@
                 </form>
 
                 <hr class="mb-8">
+
+                
+                <?php if($groupBy === 'menu'): ?>
+                    <h3 class="text-xl font-bold mb-4">📈 Ringkasan Popularitas Menu (<?php echo e($startDate); ?> s/d <?php echo e($endDate); ?>)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                        
+                        
+                        <div class="border-2 border-green-200 p-4 rounded-xl bg-green-50 shadow-md">
+                            <h4 class="text-lg font-semibold text-green-700 mb-3 flex items-center">
+                                Menu Paling Laris (Top 5)
+                            </h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <?php $__empty_1 = true; $__currentLoopData = $bestSellers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                    <li class="flex justify-between items-center text-gray-800 font-medium">
+                                        <span><?php echo e($item->menu_name); ?></span>
+                                        <span class="text-green-600 font-bold"><?php echo e(number_format($item->total_sold)); ?> pcs</span>
+                                    </li>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                    <p class="text-sm text-gray-500">Tidak ada data terlaris yang ditemukan.</p>
+                                <?php endif; ?>
+                            </ol>
+                        </div>
+
+                        
+                        <div class="border-2 border-red-200 p-4 rounded-xl bg-red-50 shadow-md">
+                            <h4 class="text-lg font-semibold text-red-700 mb-3 flex items-center">
+                                Menu Kurang Laku (Bottom 5)
+                            </h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <?php $__empty_1 = true; $__currentLoopData = $worstSellers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                    <li class="flex justify-between items-center text-gray-800 font-medium">
+                                        <span><?php echo e($item->menu_name); ?></span>
+                                        <span class="text-red-600 font-bold"><?php echo e(number_format($item->total_sold)); ?> pcs</span>
+                                    </li>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                    <p class="text-sm text-gray-500">Semua menu terjual dengan baik atau tidak ada data item yang ditemukan.</p>
+                                <?php endif; ?>
+                            </ol>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 
                 
                 <h3 class="text-xl font-bold mb-4">Grafik Penjualan Berdasarkan Dimensi: <?php echo e(ucfirst($groupBy)); ?></h3>

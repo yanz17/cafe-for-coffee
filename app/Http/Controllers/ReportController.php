@@ -55,32 +55,36 @@ class ReportController extends Controller
         // Tentukan kolom yang akan digunakan untuk SELECT dan GROUP BY
         $groupingField = match ($groupBy) {
             'category' => 'menus.kategori',
-            'method' => 'orders.payment_method_final',
             'menu' => 'menus.nama',
+            'method' => 'orders.payment_method_final',
             default => DB::raw('DATE(orders.created_at)'),
         };
 
         // Tentukan SELECT statement (selalu gunakan alias 'label')
         $selectLabel = match ($groupBy) {
-            'category' => 'menus.kategori as label',
+            // Menggunakan DB::raw() dan COALESCE untuk menampilkan 'N/A - Other' jika menu/kategori NULL
+            'category' => DB::raw('COALESCE(menus.kategori, "N/A - Other") as label'),
             'method' => 'orders.payment_method_final as label',
-            'menu' => 'menus.nama as label',
+            'menu' => DB::raw('COALESCE(menus.nama, "N/A - Other") as label'),
             default => DB::raw('DATE(orders.created_at) as label'),
         };
-
-
-        // 2. Query Data Cube
+        
+        // 2. Query Dasar: Selalu mulai dari Orders dan pakai LEFT JOIN
         $salesQuery = Order::query()
-            // KOREKSI KRITIS: Menggunakan LEFT JOIN agar data order tidak hilang
-            // jika ada item_id yang rusak atau tidak valid (walaupun seharusnya tidak)
-            ->leftJoin('order_items', 'orders.id', '=', 'order_items.order_id')
-            ->leftJoin('menus', 'order_items.menu_id', '=', 'menus.id') 
-            
             ->where('orders.status_pembayaran', 'lunas') // Filter Lunas
             ->whereDate('orders.created_at', '>=', $startDate)
             ->whereDate('orders.created_at', '<=', $endDate);
+            
+        // 3. Tambahkan JOIN hanya jika grouping membutuhkan item/menu
+        if ($groupBy === 'category' || $groupBy === 'menu') {
+             // LEFT JOIN memastikan pesanan yang sah tapi tidak ada itemnya tetap masuk
+             $salesQuery
+                 ->leftJoin('order_items', 'orders.id', '=', 'order_items.order_id')
+                 ->leftJoin('menus', 'order_items.menu_id', '=', 'menus.id');
+        }
 
-        // 3. Logic Slicing (Filter)
+
+        // 4. Logic Slicing (Filter)
         if ($paymentMethod) {
             $salesQuery->where('orders.payment_method_final', $paymentMethod);
         }
@@ -88,24 +92,73 @@ class ReportController extends Controller
             $salesQuery->where('orders.tipe_pemesanan', $orderType);
         }
 
-        // 4. Logic Roll-up (Grouping)
+        // 5. Logic Roll-up (Grouping & Aggregasi)
         
+        // Tentukan kolom agregasi
+        // Jika grouping per item/menu, kita harus menggunakan item-level revenue
+        if ($groupBy === 'category' || $groupBy === 'menu') {
+            $revenueField = 'SUM(order_items.subtotal)'; 
+            $orderCountField = 'COUNT(DISTINCT orders.id)';
+            
+            // *** BARIS orWhereNull DIHAPUS DI SINI ***
+        } else {
+            // Jika grouping per order level (date/method), gunakan total order revenue
+            $revenueField = 'SUM(orders.total_harga)'; 
+            $orderCountField = 'COUNT(orders.id)'; 
+        }
+
         // Select kolom label dan agregasi
         $salesQuery->select(
-            DB::raw('SUM(orders.total_harga) as total_revenue'),
-            DB::raw('COUNT(orders.id) as total_orders')
+            DB::raw("{$revenueField} as total_revenue"),
+            DB::raw("{$orderCountField} as total_orders")
         );
         $salesQuery->addSelect($selectLabel);
 
 
         // Grouping
-        if ($groupBy === 'date') {
-             $salesQuery->groupBy(DB::raw('DATE(orders.created_at)'));
-        } else {
-             $salesQuery->groupBy($groupingField);
-        }
+        $salesQuery->groupBy($groupingField); 
+        
+        // Urutkan
+        $salesQuery->orderBy($groupBy === 'menu' || $groupBy === 'category' ? 'total_revenue' : 'label', 'desc'); 
+
         
         $salesData = $salesQuery->get();
+
+        $bestSellers = collect();
+        $worstSellers = collect();
+        
+        if ($groupBy === 'menu') {
+            // Ambil data popularitas (Menu & Kuantitas Terjual)
+            $popularityQuery = OrderItem::select(
+                    'menus.nama as menu_name', 
+                    DB::raw('SUM(order_items.kuantitas) as total_sold'),
+                    DB::raw('SUM(order_items.subtotal) as item_revenue')
+                )
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->join('menus', 'order_items.menu_id', '=', 'menus.id')
+                ->where('orders.status_pembayaran', 'lunas')
+                ->whereDate('orders.created_at', '>=', $startDate)
+                ->whereDate('orders.created_at', '<=', $endDate)
+                ->groupBy('menus.nama')
+                // Filter tambahan dari user (jika ada)
+                ->when($paymentMethod, fn ($q) => $q->where('orders.payment_method_final', $paymentMethod))
+                ->when($orderType, fn ($q) => $q->where('orders.tipe_pemesanan', $orderType));
+
+
+            // Menu Terlaris (Top 5 berdasarkan total_sold DESC)
+            $bestSellers = (clone $popularityQuery)
+                ->orderByDesc('total_sold')
+                ->take(5)
+                ->get();
+
+            // Menu Kurang Laku (Bottom 5 berdasarkan total_sold ASC)
+            $worstSellers = (clone $popularityQuery)
+                // Filter out menu yang tidak terjual sama sekali (optional)
+                ->having('total_sold', '>', 0) 
+                ->orderBy('total_sold', 'asc')
+                ->take(5)
+                ->get();
+        }
         
         // Data untuk Grafik (Extracting labels and data)
         $chartLabels = $salesData->pluck('label');
@@ -123,7 +176,9 @@ class ReportController extends Controller
             'paymentMethod', 
             'orderType',
             'groupBy',
-            'criticalStockCount' 
+            'criticalStockCount',
+            'bestSellers',    
+            'worstSellers'
         ));
     }
     
@@ -134,8 +189,8 @@ class ReportController extends Controller
     {
         // Ambil bahan baku yang stok saat ini kurang dari atau sama dengan stok minimal
         $criticalStock = BahanBaku::whereColumn('stok_saat_ini', '<=', 'stok_minimal')
-                                  ->orderBy('stok_saat_ini', 'asc')
-                                  ->get();
+                             ->orderBy('stok_saat_ini', 'asc')
+                             ->get();
 
         $allStock = BahanBaku::orderBy('nama', 'asc')->get();
 

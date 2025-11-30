@@ -53,6 +53,47 @@
                 </form>
 
                 <hr class="mb-8">
+
+                {{-- RINGKASAN MENU LARIS & KURANG LAKU (BARU) --}}
+                @if ($groupBy === 'menu')
+                    <h3 class="text-xl font-bold mb-4">📈 Ringkasan Popularitas Menu ({{ $startDate }} s/d {{ $endDate }})</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                        
+                        {{-- Menu Terlaris --}}
+                        <div class="border-2 border-green-200 p-4 rounded-xl bg-green-50 shadow-md">
+                            <h4 class="text-lg font-semibold text-green-700 mb-3 flex items-center">
+                                Menu Paling Laris (Top 5)
+                            </h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                @forelse ($bestSellers as $item)
+                                    <li class="flex justify-between items-center text-gray-800 font-medium">
+                                        <span>{{ $item->menu_name }}</span>
+                                        <span class="text-green-600 font-bold">{{ number_format($item->total_sold) }} pcs</span>
+                                    </li>
+                                @empty
+                                    <p class="text-sm text-gray-500">Tidak ada data terlaris yang ditemukan.</p>
+                                @endforelse
+                            </ol>
+                        </div>
+
+                        {{-- Menu Kurang Laku --}}
+                        <div class="border-2 border-red-200 p-4 rounded-xl bg-red-50 shadow-md">
+                            <h4 class="text-lg font-semibold text-red-700 mb-3 flex items-center">
+                                Menu Kurang Laku (Bottom 5)
+                            </h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                @forelse ($worstSellers as $item)
+                                    <li class="flex justify-between items-center text-gray-800 font-medium">
+                                        <span>{{ $item->menu_name }}</span>
+                                        <span class="text-red-600 font-bold">{{ number_format($item->total_sold) }} pcs</span>
+                                    </li>
+                                @empty
+                                    <p class="text-sm text-gray-500">Semua menu terjual dengan baik atau tidak ada data item yang ditemukan.</p>
+                                @endforelse
+                            </ol>
+                        </div>
+                    </div>
+                @endif
                 
                 {{-- VISUALISASI DATA (GRAFIK) --}}
                 <h3 class="text-xl font-bold mb-4">Grafik Penjualan Berdasarkan Dimensi: {{ ucfirst($groupBy) }}</h3>

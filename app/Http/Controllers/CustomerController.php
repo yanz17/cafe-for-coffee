@@ -201,6 +201,8 @@ class CustomerController extends Controller
                 'payment_url' => $paymentUrl,      // Null jika tunai
             ]);
 
+            $order->items()->createMany($orderItems);
+
             // 4. Buat Order Items
             foreach ($orderItems as $item) {
                 $menu = $menuCache[$item['menu_id']];
