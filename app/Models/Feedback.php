@@ -14,6 +14,11 @@ class Feedback extends Model
         'order_id',
         'rating',
         'komentar',
+        'tags',
+    ];
+
+    protected $casts = [
+        'tags' => 'array', // <--- WAJIB: Mengubah array PHP menjadi JSON string saat disimpan
     ];
 
     public function user()

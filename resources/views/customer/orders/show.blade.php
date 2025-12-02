@@ -11,7 +11,7 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
 
-                {{-- Status Bar --}}
+                {{-- Status Bar (TETAP SAMA) --}}
                 <div class="mb-6 p-4 rounded-lg 
                     @if ($order->status_pembayaran == 'lunas') bg-green-100 border-green-400 text-green-700
                     @elseif ($order->status_pembayaran == 'menunggu') bg-yellow-100 border-yellow-400 text-yellow-700
@@ -26,19 +26,7 @@
                     @endif
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <h5 class="font-bold text-gray-700">Tipe Pesanan</h5>
-                        <p class="capitalize">{{ str_replace('_', ' ', $order->tipe_pemesanan) }} 
-                            @if ($order->meja) (Meja No. {{ $order->meja }}) @endif</p>
-                    </div>
-                    <div>
-                        <h5 class="font-bold text-gray-700">Waktu Pesan</h5>
-                        <p>{{ $order->created_at->format('d F Y, H:i') }}</p>
-                    </div>
-                </div>
-
-                {{-- Tabel Item Pesanan --}}
+                {{-- Tabel Item Pesanan (TETAP SAMA) --}}
                 <h3 class="text-xl font-bold border-t pt-4 mt-4 mb-3">Item Pesanan</h3>
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -69,53 +57,23 @@
                     </div>
                 </div>
             </div>
-            <div class="mt-4 text-center">
-                <a href="{{ route('customer.orders') }}" class="text-gray-500 hover:text-gray-800">&larr; Kembali ke Riwayat Pesanan</a>
-            </div>
-        </div>
-    </div>
-    <script>
-        @if (session('clear_cart'))
-            localStorage.removeItem('cafe_for_coffee_cart');
-        @endif
-    </script>
-
-    {{-- Load feedback yang sudah ada --}}
-    @php
-        $feedback = \App\Models\Feedback::where('order_id', $order->id)->first(); // Anda perlu menambahkan relasi feedback ke model Order
-    @endphp
-
-    {{-- Bagian Umpan Balik --}}
-    <div class="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner border-t">
-        <h3 class="text-2xl font-bold mb-4">Umpan Balik Pelayanan</h3>
-
-        @if ($order->status_pesanan !== 'selesai')
-            <p class="text-gray-500">Anda dapat memberikan umpan balik setelah pesanan berstatus **Selesai**.</p>
-        @elseif ($feedback)
-            {{-- Tampilan Feedback yang Sudah Ada --}}
-            <div class="border-l-4 border-green-500 pl-4">
-                <p class="text-green-600 font-bold mb-2">Terima kasih! Umpan balik sudah terkirim.</p>
-                <p class="font-semibold">Rating Anda: {{ $feedback->rating }} Bintang</p>
-                <p class="text-gray-700 mt-1">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
-            </div>
-        @else
-            {{-- Form Umpan Balik (Hanya tampil jika Selesai dan Belum Ada Feedback) --}}
+            
+            {{-- BLOK FEEDBACK INTERAKTIF (PERBAIKAN FOKUS) --}}
             <div class="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner border-t">
                 <h3 class="text-2xl font-bold mb-4">Umpan Balik Pelayanan</h3>
 
                 @php
-                    // Menggunakan Query Builder yang aman
                     $feedback = \App\Models\Feedback::where('order_id', $order->id)->first();
                 @endphp
 
                 @if ($order->status_pesanan !== 'selesai')
                     <p class="text-gray-500">Anda dapat memberikan umpan balik setelah pesanan berstatus **Selesai**.</p>
                 @elseif ($feedback)
-                    {{-- Tampilan Feedback yang Sudah Ada (Bintang Dinamis) --}}
+                    {{-- Tampilan Feedback yang Sudah Ada (Bintang Dinamis + Tags) --}}
                     <div class="border-l-4 border-green-500 pl-4">
                         <p class="text-green-600 font-bold mb-2">Terima kasih! Umpan balik sudah terkirim.</p>
                         
-                        {{-- DISPLAY BINTANG BERDASARKAN RATING --}}
+                        {{-- DISPLAY BINTANG --}}
                         <div class="flex items-center space-x-1 mb-2">
                             @for ($i = 1; $i <= 5; $i++)
                                 <svg class="h-8 w-8 transition duration-150 ease-in-out fill-current 
@@ -126,22 +84,36 @@
                             @endfor
                             <span class="text-sm font-semibold ml-2 text-gray-700">({{ $feedback->rating }} Bintang)</span>
                         </div>
+
+                        {{-- DISPLAY TAGS --}}
+                        @if ($feedback->tags && is_array($feedback->tags))
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="text-xs font-semibold text-gray-700">Tags:</span>
+                            @foreach ($feedback->tags as $tag)
+                                <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">{{ $tag }}</span>
+                            @endforeach
+                        </div>
+                        @endif
                         
-                        <p class="font-semibold text-gray-700 mt-1">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
+                        <p class="font-semibold text-gray-700 mt-3">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
                     </div>
                 @else
-                    {{-- FORM UMPAN BALIK INTERAKTIF DENGAN BINTANG --}}
-                    <div x-data="{ rating: 5, hoverRating: 0 }">
+                    {{-- FORM UMPAN BALIK INTERAKTIF --}}
+                    <div x-data="{ 
+                        rating: 5, 
+                        hoverRating: 0, 
+                        selectedTags: [],
+                        availableTags: ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya'] // KOREKSI: Pindah array tags ke sini
+                    }">
                         <p class="text-lg font-semibold text-gray-700 mb-3 text-center">Seberapa Puaskah Anda?</p>
                         
                         {{-- KONTROL BINTANG INTERAKTIF --}}
                         <div class="flex items-center space-x-1 justify-center mb-4">
                             <template x-for="star in 5" :key="star">
-                                <svg @click="rating = star" {{-- KUNCI: Bintang menjadi tombol yang mengatur 'rating' --}}
+                                <svg @click="rating = star"
                                      @mouseover="hoverRating = star"
                                      @mouseleave="hoverRating = 0"
                                      :class="{
-                                         // Logika warna: Gunakan hoverRating jika > 0, jika tidak gunakan rating
                                          'text-yellow-500': star <= (hoverRating === 0 ? rating : hoverRating), 
                                          'text-gray-300': star > (hoverRating === 0 ? rating : hoverRating)
                                      }"
@@ -152,16 +124,41 @@
                             </template>
                         </div>
 
-                        <p class="text-center mb-4 text-sm font-medium text-gray-500">
+                        <p class="text-center mb-6 text-sm font-medium text-gray-500">
                             Anda memilih <span class="font-bold text-indigo-600" x-text="rating + ' Bintang'"></span>
                         </p>
 
 
+                        {{-- LOGIKA TAGS INTERAKTIF BARU --}}
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Pilih Komentar Cepat:</label>
+                            <div class="flex flex-wrap gap-2">
+                                
+                                {{-- KOREKSI KRITIS: Looping array tags yang didefinisikan di Alpine --}}
+                                <template x-for="tag in availableTags" :key="tag">
+                                    <button type="button" 
+                                            @click="
+                                                const index = selectedTags.indexOf(tag);
+                                                if (index === -1) { selectedTags.push(tag); } 
+                                                else { selectedTags.splice(index, 1); }
+                                            "
+                                            :class="selectedTags.includes(tag) ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-indigo-100'"
+                                            class="px-3 py-1 text-sm rounded-full transition duration-150"
+                                            x-text="tag">
+                                    </button>
+                                </template>
+                                {{-- AKHIR KOREKSI KRITIS --}}
+                                
+                            </div>
+                        </div>
+                        {{-- AKHIR LOGIKA TAGS --}}
+
                         <form action="{{ route('customer.order.feedback.store', $order) }}" method="POST">
                             @csrf
                             
-                            {{-- Input tersembunyi untuk mengirim nilai rating --}}
+                            {{-- Input tersembunyi untuk RATING dan TAGS --}}
                             <input type="hidden" name="rating" :value="rating" required>
+                            <input type="hidden" name="tags" :value="JSON.stringify(selectedTags)"> {{-- KIRIM ARRAY TAGS --}}
                             
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Komentar (Opsional)</label>
@@ -176,50 +173,56 @@
                     </div>
                 @endif
             </div>
-        @endif
+            {{-- AKHIR BLOK FEEDBACK --}}
+            
+        </div>
+        <div class="mt-4 text-center">
+            <a href="{{ route('customer.orders') }}" class="text-gray-500 hover:text-gray-800">&larr; Kembali ke Riwayat Pesanan</a>
+        </div>
     </div>
+
+    @if ($order->status_pembayaran == 'menunggu' && $order->snap_token)
+    
+        {{-- Tombol Lanjutkan Pembayaran (Jika pop-up tertutup) --}}
+        <div class="mt-6 text-center">
+            <button id="pay-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
+                Lanjutkan Pembayaran
+            </button>
+            <p class="text-sm text-gray-500 mt-2">Jika pop-up tidak muncul otomatis, klik tombol di atas.</p>
+        </div>
+
+        {{-- SCRIPT MIDTRANS SNAPS --}}
+        <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}"></script>
+        
+        <script type="text/javascript">
+            const snapToken = '{{ $order->snap_token }}';
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // Panggil pembayaran secara otomatis saat halaman dimuat
+                if (snapToken) {
+                    // Panggil pop-up Midtrans
+                    window.snap.pay(snapToken, {
+                        onSuccess: function(result){
+                            alert("Pembayaran Berhasil!");
+                            window.location.reload(); 
+                        },
+                        onPending: function(result){
+                            alert("Pembayaran Anda sedang diproses.");
+                            window.location.reload(); 
+                        },
+                        onClose: function(){
+                            // Opsional: Jika user menutup pop-up tanpa menyelesaikan pembayaran
+                            console.log('Pembayaran ditutup.');
+                        }
+                    });
+                }
+            });
+            
+            // Listener untuk tombol manual
+            document.getElementById('pay-button').onclick = function () {
+                window.snap.pay(snapToken);
+            };
+        </script>
+    @endif
 @endsection
 
-@if ($order->status_pembayaran == 'menunggu' && $order->snap_token)
-    
-    {{-- Tombol Lanjutkan Pembayaran (Jika pop-up tertutup) --}}
-    <div class="mt-6 text-center">
-        <button id="pay-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
-            Lanjutkan Pembayaran
-        </button>
-        <p class="text-sm text-gray-500 mt-2">Jika pop-up tidak muncul otomatis, klik tombol di atas.</p>
-    </div>
-
-    {{-- SCRIPT MIDTRANS SNAPS --}}
-    <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}"></script>
-    
-    <script type="text/javascript">
-        const snapToken = '{{ $order->snap_token }}';
-
-        document.addEventListener('DOMContentLoaded', function () {
-            // Panggil pembayaran secara otomatis saat halaman dimuat
-            if (snapToken) {
-                // Panggil pop-up Midtrans
-                window.snap.pay(snapToken, {
-                    onSuccess: function(result){
-                        alert("Pembayaran Berhasil!");
-                        window.location.reload(); 
-                    },
-                    onPending: function(result){
-                        alert("Pembayaran Anda sedang diproses.");
-                        window.location.reload(); 
-                    },
-                    onClose: function(){
-                        // Opsional: Jika user menutup pop-up tanpa menyelesaikan pembayaran
-                        console.log('Pembayaran ditutup.');
-                    }
-                });
-            }
-        });
-        
-        // Listener untuk tombol manual
-        document.getElementById('pay-button').onclick = function () {
-            window.snap.pay(snapToken);
-        };
-    </script>
-@endif

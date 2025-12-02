@@ -270,13 +270,17 @@ class CustomerController extends Controller
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'komentar' => 'nullable|string|max:500',
+            'tags' => 'nullable|string', 
         ]);
+
+        $tagsArray = json_decode($request->tags, true);
 
         \App\Models\Feedback::create([
             'user_id' => auth()->id(),
             'order_id' => $order->id,
             'rating' => $request->rating,
             'komentar' => $request->komentar,
+            'tags' => $tagsArray,
         ]);
 
         return back()->with('success', 'Terima kasih atas umpan baliknya!');

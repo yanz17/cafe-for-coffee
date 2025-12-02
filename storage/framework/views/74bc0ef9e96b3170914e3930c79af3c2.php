@@ -13,36 +13,6 @@
             <div class="space-y-8">
 
                 
-                <div class="bg-white p-6 shadow-xl sm:rounded-xl">
-                    <h3 class="text-xl font-bold mb-4">Filter Data Feedback</h3>
-                    <form method="GET" action="<?php echo e(route('manager.reports.feedback')); ?>" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        
-                        <div>
-                            <label for="start_date" class="block text-sm font-medium text-gray-700">Mulai Tanggal</label>
-                            <input type="date" name="start_date" id="start_date" value="<?php echo e($startDate); ?>" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
-                        </div>
-                        <div>
-                            <label for="end_date" class="block text-sm font-medium text-gray-700">Sampai Tanggal</label>
-                            <input type="date" name="end_date" id="end_date" value="<?php echo e($endDate); ?>" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
-                        </div>
-
-                        <div>
-                            <label for="rating_filter" class="block text-sm font-medium text-gray-700">Filter Rating</label>
-                            <select name="rating_filter" id="rating_filter" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm">
-                                <option value="">-- Semua Rating --</option>
-                                <?php for($i = 5; $i >= 1; $i--): ?>
-                                    <option value="<?php echo e($i); ?>" <?php echo e($ratingFilter == $i ? 'selected' : ''); ?>><?php echo e($i); ?> Bintang</option>
-                                <?php endfor; ?>
-                            </select>
-                        </div>
-
-                        <button type="submit" class="w-full md:w-auto self-end bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                            Tampilkan Data
-                        </button>
-                    </form>
-                </div>
-
-                
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-white overflow-hidden shadow-md sm:rounded-lg p-6 border-l-4 border-indigo-500">
                         <p class="text-sm font-medium text-gray-500">Total Feedback</p>
@@ -55,7 +25,7 @@
                     <div class="bg-white overflow-hidden shadow-md sm:rounded-lg p-6 border-l-4 border-green-500">
                         <p class="text-sm font-medium text-gray-500">Feedback dengan 5 Bintang</p>
                         <?php
-                            $count5 = $chartData[4] ?? 0; // Index 4 = 5 Bintang
+                            $count5 = $chartData[4] ?? 0;
                             $percentage = $totalFeedback > 0 ? ($count5 / $totalFeedback * 100) : 0;
                         ?>
                         <p class="text-3xl font-extrabold text-gray-900 mt-1"><?php echo e(number_format($count5)); ?> <span class="text-base text-gray-500">(<?php echo e(number_format($percentage, 1)); ?>%)</span></p>
@@ -80,21 +50,25 @@
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl. Kirim</th>
-                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Komentar</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pelanggan</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Pesanan</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl. Kirim</th>
+                                        <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                                        
+                                        
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags Cepat</th> 
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Komentar Tambahan</th>
+                                        
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pelanggan</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. Pesanan</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php $__empty_1 = true; $__currentLoopData = $feedbacks; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $feedback): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                                             <?php echo e($feedback->created_at->format('d M Y H:i')); ?>
 
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <td class="px-3 py-4 whitespace-nowrap text-center">
                                             
                                             <span class="text-lg font-bold text-yellow-500">
                                                 <?php for($i = 0; $i < $feedback->rating; $i++): ?>
@@ -102,22 +76,38 @@
                                                 <?php endfor; ?>
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4 text-sm text-gray-800 max-w-xs overflow-hidden truncate">
-                                            <?php echo e($feedback->komentar ?? 'Tidak ada komentar'); ?>
+                                        
+                                        
+                                        <td class="px-3 py-4 max-w-sm">
+                                            <?php if($feedback->tags && is_array($feedback->tags)): ?>
+                                                <div class="flex flex-wrap gap-1">
+                                                    <?php $__currentLoopData = $feedback->tags; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                        <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2 py-0.5 rounded-full"><?php echo e($tag); ?></span>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-gray-400 text-xs">N/A</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        
+                                        
+                                        <td class="px-3 py-4 text-sm text-gray-800 max-w-sm overflow-hidden truncate">
+                                            <?php echo e($feedback->komentar ?? 'Tidak ada'); ?>
 
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
+                                        
+                                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
                                             <?php echo e($feedback->user->name ?? 'N/A'); ?>
 
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            #<?php echo e($feedback->order->nomor_pesanan ?? 'N/A'); ?>
+                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            #<?php echo e($feedback->order->nomor_pesanan ?? '-'); ?>
 
                                         </td>
                                     </tr>
                                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                     <tr>
-                                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
                                             Belum ada umpan balik yang tersedia.
                                         </td>
                                     </tr>
@@ -160,12 +150,11 @@
                         label: 'Jumlah Feedback',
                         data: chartFeedbackData,
                         backgroundColor: (ctx) => {
-                            // Warna kuning untuk rating tinggi (5, 4), abu-abu untuk sisanya
                             const index = ctx.dataIndex;
-                            if (index >= 3) { // 4 Bintang ke atas
-                                return 'rgba(255, 193, 7, 0.8)'; // Yellow
+                            if (index >= 3) {
+                                return 'rgba(255, 193, 7, 0.8)';
                             } else {
-                                return 'rgba(108, 117, 125, 0.5)'; // Gray
+                                return 'rgba(108, 117, 125, 0.5)';
                             }
                         },
                         borderColor: '#adb5bd',
@@ -192,7 +181,6 @@
                     plugins: {
                         tooltip: {
                             callbacks: {
-                                // Tampilkan persentase di tooltip
                                 label: function(context) {
                                     let label = context.dataset.label || '';
                                     if (label) {
