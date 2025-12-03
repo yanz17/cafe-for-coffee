@@ -372,52 +372,88 @@ class ReportController extends Controller
         // 1. Input Filter
         $startDate = $request->input('start_date', Carbon::now()->subMonths(1)->toDateString());
         $endDate = $request->input('end_date', Carbon::now()->toDateString());
-        $ratingFilter = $request->input('rating_filter'); // Filter 1, 2, 3, 4, 5
+        $ratingFilter = $request->input('rating_filter');
+
+        // Tags Master List untuk Analisis
+        $goodTags = ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya']; // <--- VARIABEL INI HARUS DIKIRIM
+        $badTags = ['Lama', 'Kotor', 'Mahal', 'Pahit', 'Biasa Saja'];
 
         // Query dasar
         $baseQuery = Feedback::query()
                              ->whereDate('created_at', '>=', $startDate)
                              ->whereDate('created_at', '<=', $endDate);
 
-        // Filter Rating
-        if ($ratingFilter) {
-            $baseQuery->where('rating', $ratingFilter);
-        }
+        if ($ratingFilter) { $baseQuery->where('rating', $ratingFilter); }
         
-        // 2. Ambil semua feedback (paginasi untuk tabel detail)
+        // 2. Ambil data Feedback (untuk agregasi dan tabel detail)
         $feedbacks = (clone $baseQuery)->with(['user', 'order'])
                              ->orderBy('created_at', 'desc')
                              ->paginate(10)
-                             ->withQueryString(); // Memastikan filter tetap ada saat pindah halaman
+                             ->withQueryString();
                              
-        // 3. Ambil semua rating untuk agregasi (gunakan base query untuk konsistensi)
-        $allRatings = (clone $baseQuery)->select('rating')->get();
-        
-        // 4. Agregasi Data Chart
+        // 3. Agregasi Data Chart
+        $allRatings = (clone $baseQuery)->select('rating', 'tags')->get(); 
+
         $totalFeedback = $allRatings->count();
         $averageRating = $allRatings->avg('rating');
         
-        // Hitung frekuensi per rating (1 hingga 5)
-        $ratingCounts = $allRatings->groupBy('rating')->map->count();
+        // Agregasi Tags (Untuk Grafik 2)
+        $tagCounts = [
+            'good' => 0,
+            'bad' => 0,
+            'total_tags' => 0,
+            'all_tags' => []
+        ];
+
+        foreach ($allRatings as $feedback) {
+            if (is_array($feedback->tags)) {
+                $tagCounts['total_tags'] += count($feedback->tags);
+                foreach ($feedback->tags as $tag) {
+                    if (in_array($tag, $goodTags)) {
+                        $tagCounts['good']++;
+                    } elseif (in_array($tag, $badTags)) {
+                        $tagCounts['bad']++;
+                    }
+                    $tagCounts['all_tags'][$tag] = ($tagCounts['all_tags'][$tag] ?? 0) + 1;
+                }
+            }
+        }
         
-        $chartData = [];
+        // Data untuk Grafik Rating Bintang (Grafik 1)
+        $ratingDistribution = [];
         $chartLabels = [];
+        $chartData = [];
         
         for ($i = 1; $i <= 5; $i++) {
-            $count = $ratingCounts->get($i) ?? 0;
+            $count = $allRatings->where('rating', $i)->count();
             $chartLabels[] = "{$i} Bintang";
-            $chartData[] = $count;
+            $chartData[] = $count; 
+            $ratingDistribution[] = $count;
         }
+
+        // Data untuk Grafik Tag (Grafik 2)
+        arsort($tagCounts['all_tags']);
+        $topTags = array_slice($tagCounts['all_tags'], 0, 5, true);
+        
+        $tagChartLabels = ['Positif', 'Negatif'];
+        $tagChartData = [$tagCounts['good'], $tagCounts['bad']];
+
 
         return view('manager.reports.all_feedback', compact(
             'feedbacks', 
             'averageRating', 
             'totalFeedback', 
-            'chartLabels', 
-            'chartData',
-            'startDate',    // Kirim kembali variabel filter
-            'endDate',      // Kirim kembali variabel filter
-            'ratingFilter'  // Kirim kembali variabel filter
+            'ratingDistribution', 
+            'chartLabels',        
+            'chartData',          
+            'tagCounts',          
+            'topTags',            
+            'tagChartLabels',     
+            'tagChartData',
+            'startDate',    
+            'endDate',      
+            'ratingFilter',
+            'goodTags' // <--- KOREKSI KRITIS: Variabel goodTags sekarang dikirim!
         ));
     }
 }

@@ -89,7 +89,15 @@
                         <div class="mt-3 flex flex-wrap gap-2">
                             <span class="text-xs font-semibold text-gray-700">Tags:</span>
                             <?php $__currentLoopData = $feedback->tags; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm"><?php echo e($tag); ?></span>
+                                
+                                <?php
+                                    $isGood = in_array($tag, ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya']);
+                                ?>
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm 
+                                             <?php echo e($isGood ? 'bg-indigo-100 text-indigo-800' : 'bg-red-100 text-red-800'); ?>">
+                                    <?php echo e($tag); ?>
+
+                                </span>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
                         <?php endif; ?>
@@ -102,9 +110,11 @@
                         rating: 5, 
                         hoverRating: 0, 
                         selectedTags: [],
-                        availableTags: ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya'] // KOREKSI: Pindah array tags ke sini
+                        goodTags: ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya'], // KELOMPOK BAIK
+                        badTags: ['Lama', 'Kotor', 'Mahal', 'Pahit', 'Biasa Saja'], // KELOMPOK BURUK
                     }">
                         <p class="text-lg font-semibold text-gray-700 mb-3 text-center">Seberapa Puaskah Anda?</p>
+                        
                         
                         
                         <div class="flex items-center space-x-1 justify-center mb-4">
@@ -122,32 +132,50 @@
                                 </svg>
                             </template>
                         </div>
-
                         <p class="text-center mb-6 text-sm font-medium text-gray-500">
                             Anda memilih <span class="font-bold text-indigo-600" x-text="rating + ' Bintang'"></span>
                         </p>
 
 
                         
-                        <div class="mb-6">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Pilih Komentar Cepat:</label>
-                            <div class="flex flex-wrap gap-2">
-                                
-                                
-                                <template x-for="tag in availableTags" :key="tag">
-                                    <button type="button" 
-                                            @click="
-                                                const index = selectedTags.indexOf(tag);
-                                                if (index === -1) { selectedTags.push(tag); } 
-                                                else { selectedTags.splice(index, 1); }
-                                            "
-                                            :class="selectedTags.includes(tag) ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-indigo-100'"
-                                            class="px-3 py-1 text-sm rounded-full transition duration-150"
-                                            x-text="tag">
-                                    </button>
-                                </template>
-                                
-                                
+                        <div class="mb-6 space-y-4">
+                            
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-green-700 mb-2">👍 Apa yang Anda Suka?</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="tag in goodTags" :key="tag">
+                                        <button type="button" 
+                                                @click="
+                                                    const index = selectedTags.indexOf(tag);
+                                                    if (index === -1) { selectedTags.push(tag); } 
+                                                    else { selectedTags.splice(index, 1); }
+                                                "
+                                                :class="selectedTags.includes(tag) ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-indigo-100'"
+                                                class="px-3 py-1 text-sm rounded-full transition duration-150"
+                                                x-text="tag">
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-red-700 mb-2">👎 Apa yang Perlu Ditingkatkan?</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="tag in badTags" :key="tag">
+                                        <button type="button" 
+                                                @click="
+                                                    const index = selectedTags.indexOf(tag);
+                                                    if (index === -1) { selectedTags.push(tag); } 
+                                                    else { selectedTags.splice(index, 1); }
+                                                "
+                                                :class="selectedTags.includes(tag) ? 'bg-red-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-red-100'"
+                                                class="px-3 py-1 text-sm rounded-full transition duration-150"
+                                                x-text="tag">
+                                        </button>
+                                    </template>
+                                </div>
                             </div>
                         </div>
                         
@@ -160,7 +188,7 @@
                             <input type="hidden" name="tags" :value="JSON.stringify(selectedTags)"> 
                             
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Komentar (Opsional)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Komentar Tambahan (Opsional)</label>
                                 <textarea name="komentar" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" placeholder="Komentar Anda..."></textarea>
                                 <?php $__errorArgs = ['komentar'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');

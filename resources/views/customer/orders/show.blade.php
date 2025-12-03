@@ -90,7 +90,14 @@
                         <div class="mt-3 flex flex-wrap gap-2">
                             <span class="text-xs font-semibold text-gray-700">Tags:</span>
                             @foreach ($feedback->tags as $tag)
-                                <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full shadow-sm">{{ $tag }}</span>
+                                {{-- Menentukan warna tag yang sudah dikirim --}}
+                                @php
+                                    $isGood = in_array($tag, ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya']);
+                                @endphp
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm 
+                                             {{ $isGood ? 'bg-indigo-100 text-indigo-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ $tag }}
+                                </span>
                             @endforeach
                         </div>
                         @endif
@@ -98,16 +105,18 @@
                         <p class="font-semibold text-gray-700 mt-3">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
                     </div>
                 @else
-                    {{-- FORM UMPAN BALIK INTERAKTIF --}}
+                    {{-- FORM UMPAN BALIK INTERAKTIF DENGAN BINTANG & TAGS --}}
                     <div x-data="{ 
                         rating: 5, 
                         hoverRating: 0, 
                         selectedTags: [],
-                        availableTags: ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya'] // KOREKSI: Pindah array tags ke sini
+                        goodTags: ['Enak', 'Cepat', 'Bersih', 'Ramah', 'Nyaman', 'Suka Kopinya'], // KELOMPOK BAIK
+                        badTags: ['Lama', 'Kotor', 'Mahal', 'Pahit', 'Biasa Saja'], // KELOMPOK BURUK
                     }">
                         <p class="text-lg font-semibold text-gray-700 mb-3 text-center">Seberapa Puaskah Anda?</p>
                         
                         {{-- KONTROL BINTANG INTERAKTIF --}}
+                        {{-- ... (Kontrol Bintang Tetap Sama) ... --}}
                         <div class="flex items-center space-x-1 justify-center mb-4">
                             <template x-for="star in 5" :key="star">
                                 <svg @click="rating = star"
@@ -123,32 +132,50 @@
                                 </svg>
                             </template>
                         </div>
-
                         <p class="text-center mb-6 text-sm font-medium text-gray-500">
                             Anda memilih <span class="font-bold text-indigo-600" x-text="rating + ' Bintang'"></span>
                         </p>
 
 
                         {{-- LOGIKA TAGS INTERAKTIF BARU --}}
-                        <div class="mb-6">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Pilih Komentar Cepat:</label>
-                            <div class="flex flex-wrap gap-2">
-                                
-                                {{-- KOREKSI KRITIS: Looping array tags yang didefinisikan di Alpine --}}
-                                <template x-for="tag in availableTags" :key="tag">
-                                    <button type="button" 
-                                            @click="
-                                                const index = selectedTags.indexOf(tag);
-                                                if (index === -1) { selectedTags.push(tag); } 
-                                                else { selectedTags.splice(index, 1); }
-                                            "
-                                            :class="selectedTags.includes(tag) ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-indigo-100'"
-                                            class="px-3 py-1 text-sm rounded-full transition duration-150"
-                                            x-text="tag">
-                                    </button>
-                                </template>
-                                {{-- AKHIR KOREKSI KRITIS --}}
-                                
+                        <div class="mb-6 space-y-4">
+                            
+                            {{-- Tags BAIK --}}
+                            <div>
+                                <label class="block text-sm font-semibold text-green-700 mb-2">👍 Apa yang Anda Suka?</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="tag in goodTags" :key="tag">
+                                        <button type="button" 
+                                                @click="
+                                                    const index = selectedTags.indexOf(tag);
+                                                    if (index === -1) { selectedTags.push(tag); } 
+                                                    else { selectedTags.splice(index, 1); }
+                                                "
+                                                :class="selectedTags.includes(tag) ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-indigo-100'"
+                                                class="px-3 py-1 text-sm rounded-full transition duration-150"
+                                                x-text="tag">
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- Tags BURUK --}}
+                            <div>
+                                <label class="block text-sm font-semibold text-red-700 mb-2">👎 Apa yang Perlu Ditingkatkan?</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="tag in badTags" :key="tag">
+                                        <button type="button" 
+                                                @click="
+                                                    const index = selectedTags.indexOf(tag);
+                                                    if (index === -1) { selectedTags.push(tag); } 
+                                                    else { selectedTags.splice(index, 1); }
+                                                "
+                                                :class="selectedTags.includes(tag) ? 'bg-red-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-red-100'"
+                                                class="px-3 py-1 text-sm rounded-full transition duration-150"
+                                                x-text="tag">
+                                        </button>
+                                    </template>
+                                </div>
                             </div>
                         </div>
                         {{-- AKHIR LOGIKA TAGS --}}
@@ -161,7 +188,7 @@
                             <input type="hidden" name="tags" :value="JSON.stringify(selectedTags)"> {{-- KIRIM ARRAY TAGS --}}
                             
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Komentar (Opsional)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Komentar Tambahan (Opsional)</label>
                                 <textarea name="komentar" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm" placeholder="Komentar Anda..."></textarea>
                                 @error('komentar') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
