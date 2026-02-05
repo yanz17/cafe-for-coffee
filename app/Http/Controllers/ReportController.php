@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Models\OrderItem;
 use App\Models\Menu;
 use App\Models\Feedback;
+use App\Imports\SalesImport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -365,6 +367,20 @@ class ReportController extends Controller
             'startDate', 
             'endDate'
         ));
+    }
+
+    public function importSales(Request $request)
+    {
+        $request->validate([
+            'file_excel' => 'required|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            Excel::import(new SalesImport, $request->file('file_excel'));
+            return back()->with('success', 'Data penjualan berhasil diimport dari Excel!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengimport data: ' . $e->getMessage());
+        }
     }
 
     public function allFeedback(Request $request)

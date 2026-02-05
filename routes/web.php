@@ -97,6 +97,8 @@ Route::prefix('manager')->middleware(['auth', 'role:'. User::ROLE_MANAGER])->gro
     // 7. KELOLA FEEDBACK PELANGGAN
     Route::get('/manager/feedbacks', [\App\Http\Controllers\FeedbackController::class, 'indexFeedbacks'])->name('manager.feedbacks.index');
     Route::post('/manager/reports/feedback/{feedback}/reply', [App\Http\Controllers\ReportController::class, 'replyFeedback'])->name('manager.feedback.reply');
+
+    Route::post('/manager/reports/sales/import', [App\Http\Controllers\ReportController::class, 'importSales'])->name('manager.reports.sales.import');
 });
 
 // Route untuk Kasir

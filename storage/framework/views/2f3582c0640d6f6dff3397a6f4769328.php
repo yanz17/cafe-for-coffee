@@ -13,6 +13,7 @@
                 <h3 class="text-2xl font-bold mb-6">Analisis Penjualan Dinamis</h3>
 
                 
+                
                 <form method="GET" action="<?php echo e(route('manager.reports.sales')); ?>" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-8 p-4 border rounded-lg bg-gray-50">
                     
                     <div>
@@ -50,6 +51,21 @@
                         Tampilkan Data
                     </button>
                 </form>
+
+                <div class="mb-8 p-4 border rounded-lg bg-indigo-50 border-indigo-200">
+                    <h4 class="font-bold text-indigo-800 mb-2 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        Import Data Penjualan dari Excel
+                    </h4>
+                    <form action="<?php echo e(route('manager.reports.sales.import')); ?>" method="POST" enctype="multipart/form-data" class="flex items-center space-x-4">
+                        <?php echo csrf_field(); ?>
+                        <input type="file" name="file_excel" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700" required>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition">
+                            Upload & Import
+                        </button>
+                    </form>
+                    <p class="text-[10px] text-indigo-400 mt-2">*Format kolom harus: nomor_pesanan, nama_menu, kuantitas, total_harga, metode_bayar, tanggal</p>
+                </div>
 
                 <hr class="mb-8">
 
