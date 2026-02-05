@@ -39,6 +39,22 @@
                                             <?php endfor; ?>
                                         </span>
                                     </td>
+                                    <td class="px-3 py-4">
+                                        <?php if($feedback->balasan_manager): ?>
+                                            <div class="bg-indigo-50 p-2 rounded border border-indigo-100">
+                                                <span class="text-[10px] font-bold text-indigo-600 block mb-1 uppercase">Balasan Anda:</span>
+                                                <p class="text-xs text-gray-700"><?php echo e($feedback->balasan_manager); ?></p>
+                                            </div>
+                                        <?php else: ?>
+                                            <form action="<?php echo e(route('manager.feedback.reply', $feedback)); ?>" method="POST">
+                                                <?php echo csrf_field(); ?>
+                                                <textarea name="balasan_manager" rows="2" class="w-full text-xs rounded border-gray-300" placeholder="Tulis balasan..."></textarea>
+                                                <button type="submit" class="mt-1 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded hover:bg-indigo-700">
+                                                    Kirim Balasan
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="px-6 py-4 text-sm text-gray-800 max-w-xs overflow-hidden truncate">
                                         <?php echo e($feedback->komentar ?? 'Tidak ada komentar'); ?>
 

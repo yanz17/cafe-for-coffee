@@ -103,6 +103,15 @@
                         @endif
                         
                         <p class="font-semibold text-gray-700 mt-3">Komentar: "{{ $feedback->komentar ?? '-' }}"</p>
+
+                        @if($feedback->balasan_manager)
+                            <div class="mt-4 p-3 bg-indigo-50 rounded-lg border-l-4 border-indigo-500">
+                                <div class="text-xs font-bold text-indigo-700 mb-1">Balasan dari Manager:</div>
+                                <p class="text-sm text-gray-800">
+                                    {{ $feedback->balasan_manager }}
+                                </p>
+                            </div>
+                        @endif
                     </div>
                 @else
                     {{-- FORM UMPAN BALIK INTERAKTIF DENGAN BINTANG & TAGS --}}

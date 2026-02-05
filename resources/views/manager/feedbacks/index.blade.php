@@ -38,6 +38,22 @@
                                             @endfor
                                         </span>
                                     </td>
+                                    <td class="px-3 py-4">
+                                        @if($feedback->balasan_manager)
+                                            <div class="bg-indigo-50 p-2 rounded border border-indigo-100">
+                                                <span class="text-[10px] font-bold text-indigo-600 block mb-1 uppercase">Balasan Anda:</span>
+                                                <p class="text-xs text-gray-700">{{ $feedback->balasan_manager }}</p>
+                                            </div>
+                                        @else
+                                            <form action="{{ route('manager.feedback.reply', $feedback) }}" method="POST">
+                                                @csrf
+                                                <textarea name="balasan_manager" rows="2" class="w-full text-xs rounded border-gray-300" placeholder="Tulis balasan..."></textarea>
+                                                <button type="submit" class="mt-1 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded hover:bg-indigo-700">
+                                                    Kirim Balasan
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 text-sm text-gray-800 max-w-xs overflow-hidden truncate">
                                         {{ $feedback->komentar ?? 'Tidak ada komentar' }}
                                     </td>

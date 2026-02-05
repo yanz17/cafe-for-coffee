@@ -15,6 +15,7 @@ class Feedback extends Model
         'rating',
         'komentar',
         'tags',
+        'balasan_manager',
     ];
 
     protected $casts = [

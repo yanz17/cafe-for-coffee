@@ -456,4 +456,17 @@ class ReportController extends Controller
             'goodTags' // <--- KOREKSI KRITIS: Variabel goodTags sekarang dikirim!
         ));
     }
+
+    public function replyFeedback(Request $request, Feedback $feedback)
+    {
+        $request->validate([
+            'balasan_manager' => 'required|string|max:1000',
+        ]);
+
+        $feedback->update([
+            'balasan_manager' => $request->balasan_manager
+        ]);
+
+        return back()->with('success', 'Balasan berhasil dikirim ke pelanggan.');
+    }
 }
